@@ -1,0 +1,115 @@
+<UserControl
+    x:Class="Blocks_.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <Grid Padding="40">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Заголовок -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,40">
+                <TextBlock Text="Blocks!" 
+                           FontSize="48" 
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Визуальный редактор блок-схем" 
+                           FontSize="18" 
+                           Foreground="#AAAAAA"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- Быстрые действия -->
+            <StackPanel Grid.Row="1" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center"
+                        Spacing="20"
+                        Margin="0,0,0,40">
+
+                <Button x:Name="NewFlowchartButton"
+                        Click="NewFlowchartButton_Click"
+                        Height="120"
+                        Width="180"
+                        CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <FontIcon Glyph="&#xE710;" FontSize="32"/>
+                        <TextBlock Text="Новая блок-схема" 
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="OpenFlowchartButton"
+                        Click="OpenFlowchartButton_Click"
+                        Height="120"
+                        Width="180"
+                        CornerRadius="8">
+                    <StackPanel Spacing="8">
+                        <FontIcon Glyph="&#xE8E5;" FontSize="32"/>
+                        <TextBlock Text="Открыть файл" 
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- Недавние файлы -->
+            <StackPanel Grid.Row="2">
+                <TextBlock Text="Недавние файлы" 
+                           FontSize="24" 
+                           FontWeight="SemiBold"
+                           Foreground="White"
+                           Margin="0,0,0,20"/>
+
+                <ListView x:Name="RecentFilesListView"
+                          SelectionMode="Single"
+                          ItemClick="RecentFilesListView_ItemClick"
+                          IsItemClickEnabled="True"
+                          Background="Transparent">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="12,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0" 
+                                          Glyph="&#xE8A5;" 
+                                          FontSize="20"
+                                          Margin="0,0,12,0"
+                                          Foreground="#CCCCCC"/>
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding FileName}" 
+                                               FontSize="14"
+                                               Foreground="White"/>
+                                    <TextBlock Text="{Binding FilePath}" 
+                                               FontSize="12"
+                                               Foreground="#888888"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" 
+                                           Text="{Binding LastOpened}" 
+                                           FontSize="12"
+                                           Foreground="#888888"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

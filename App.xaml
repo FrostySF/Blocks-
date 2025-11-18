@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="Blocks_.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Blocks_">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Other merged dictionaries here -->
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Other app resources here -->
+            <!-- Альтернативный упрощенный DataTemplate -->
+            <DataTemplate x:Key="BlockItemTemplate">
+                <Border Background="{Binding BackgroundColor}" 
+            CornerRadius="6"
+            BorderThickness="1"
+            BorderBrush="#FF555555"
+            Padding="8"
+            Margin="4"
+            Height="80">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Большая иконка сверху -->
+                        <Viewbox Grid.Row="0" 
+                    MaxWidth="32" 
+                    MaxHeight="32"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                            <FontIcon Glyph="{Binding Icon}"
+                         Foreground="White"
+                         FontSize="20"/>
+                        </Viewbox>
+
+                        <!-- Название блока снизу -->
+                        <StackPanel Grid.Row="1" 
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0">
+                            <TextBlock Text="{Binding Name}"
+                          Foreground="White"
+                          TextAlignment="Center"
+                          FontSize="11"
+                          TextWrapping="Wrap"
+                          MaxLines="2"
+                          TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <!-- Кнопка информации (маленькая в углу) -->
+                        <Button Grid.Row="0"
+                   Grid.RowSpan="2"
+                   Content="&#xE946;"
+                   FontFamily="Segoe MDL2 Assets"
+                   Foreground="White"
+                   Background="{Binding BackgroundColor}"
+                   BorderThickness="0"
+                   Padding="2"
+                   Margin="2"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Top"
+                   Tag="{Binding}"
+                   ToolTipService.ToolTip="Информация о блоке"
+                   Width="24"
+                   Height="24"
+                   FontSize="12"
+                   Opacity="0.7">
+                            <Button.Resources>
+                                <Style TargetType="Button">
+                                    <Setter Property="CornerRadius" Value="8"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

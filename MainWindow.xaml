@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Blocks_.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Blocks_"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:haru="using:Blocks_.haru"
+    xmlns:core="using:Blocks_.Core.Models"
+    mc:Ignorable="d"
+    
+    Title="Blocks!">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.Resources>
+            <!-- DataTemplate для списка блоков -->
+            <DataTemplate x:Key="BlockItemTemplate" x:DataType="core:BlockItem">
+                <Border Background="{x:Bind BackgroundColor}" 
+                CornerRadius="8"
+                BorderThickness="1"
+                BorderBrush="#FF555555"
+                Padding="10"
+                Margin="8,4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Viewbox Grid.Row="0" 
+                    MaxWidth="32" 
+                    MaxHeight="32"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                            <FontIcon Glyph="{x:Bind Icon}"
+                         Foreground="White"
+                         FontSize="20"/>
+                        </Viewbox>
+                        <StackPanel Grid.Row="1" 
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0">
+                            <TextBlock Text="{x:Bind Name}"
+                          Foreground="White"
+                          TextAlignment="Center"
+                          FontSize="11"
+                          TextWrapping="Wrap"
+                          MaxLines="2"
+                          TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="2"
+                            Content="&#xE109;"
+                            FontFamily="Segoe MDL2 Assets"
+                            Foreground="#FFCCCCCC"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="4"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Click="BlockButton_Click"
+                            Tag="{x:Bind}"
+                            ToolTipService.ToolTip="Добавить блок на канвас">
+                        </Button>
+
+                    </Grid>
+                </Border>
+            </DataTemplate>
+
+
+            <!-- DataTemplate для блоков на канвасе -->
+            <DataTemplate x:Key="CanvasBlockTemplate" x:DataType="core:BlockItem">
+                <Border Background="{x:Bind BackgroundColor}"
+                CornerRadius="8"
+                BorderThickness="2"
+                BorderBrush="{x:Bind BorderColor}"
+                Padding="12"
+                Width="120"
+                Height="70">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <FontIcon Grid.Row="0"
+                         Glyph="{x:Bind Icon}"
+                         FontSize="16"
+                         Foreground="White"
+                         HorizontalAlignment="Center"
+                         Margin="0,0,0,4"/>
+
+                        <TextBlock Grid.Row="1"
+                          Text="{x:Bind Name}"
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          TextAlignment="Center"
+                          TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+
+            <Style x:Key="FlowchartBlockStyle" TargetType="ContentControl">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContentControl">
+                            <Border x:Name="BlockBorder"
+                            Background="{Binding BackgroundColor}"
+                            CornerRadius="8"
+                            BorderThickness="2"
+                            BorderBrush="{Binding BorderColor}"
+                            Padding="12">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <FontIcon Grid.Row="0"
+                                     Glyph="{Binding Icon}"
+                                     FontSize="16"
+                                     Foreground="White"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,0,0,4"/>
+
+   
+                                    <TextBlock Grid.Row="1"
+                                      Text="{Binding Name}"
+                                      Foreground="White"
+                                      HorizontalAlignment="Center"
+                                      TextAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
+        
+        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+
+        <MenuBar Grid.Row="0" Grid.ColumnSpan="3">
+            <MenuBarItem Title="Файл">
+                <MenuFlyoutItem Text="Новая блок-схема" Click="NewFlowchart_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="N"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Блок-схема из файла" Click="OpenFlowchart_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="O"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Сохранить блок-схему" Click="SaveFlowchart_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="S"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Выход" Click="Exit_Click"/>
+            </MenuBarItem>
+
+            <MenuBarItem Title="Правка">
+                <MenuFlyoutItem Text="Копировать" Click="Copy_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="C"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Вставить" Click="Paste_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="V"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Вырезать" Click="Cut_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="X"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Назад" Click="Undo_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Z"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Вперед" Click="Redo_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="Y"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuBarItem>
+
+            <MenuBarItem Title="Процедуры">
+                <MenuFlyoutItem Text="Новая процендура"/>
+                <MenuFlyoutItem Text="Процедура из файла"/>
+                <MenuFlyoutItem Text="Сохранить процедуру"/>
+            </MenuBarItem>
+
+            <MenuBarItem Title="Отладка">
+                <MenuFlyoutItem Text="Запуск отладки" Click="StartDebug_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="F5"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Остановить отладку" Click="StopDebug_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="RightShift"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Пошаговое выполнение" Click="StepDebug_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Enter"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuBarItem>
+
+            <MenuBarItem Title="Справка">
+                <MenuFlyoutItem Text="О программе" Click="About_Click"/>
+                <MenuFlyoutItem Text="Документация" Click="Documentation_Click"/>
+            </MenuBarItem>
+        </MenuBar>
+
+
+        <CommandBar Grid.Row="1" Grid.ColumnSpan="3" DefaultLabelPosition="Right">
+            <AppBarButton Icon="Add" Label="Новая" Click="NewFlowchart_Click"/>
+            <AppBarButton Icon="OpenFile" Label="Открыть" Click="OpenFlowchart_Click"/>
+            <AppBarButton Icon="Save" Label="Сохранить" Click="SaveFlowchart_Click"/>
+
+            <CommandBar.SecondaryCommands>
+                <AppBarButton Icon="Play" Label="Запуск отладки" Click="StartDebug_Click"/>
+                <AppBarButton Icon="Stop" Label="Остановить" Click="StopDebug_Click"/>
+            </CommandBar.SecondaryCommands>
+        </CommandBar>
+
+        <!-- Список блоков -->
+        <Grid Grid.Row="2" Grid.Column="0" Width="200">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Заголовок -->
+            <Border Grid.Row="0" Background="#30303030" Padding="10">
+                <TextBlock Text="Блоки" 
+                   HorizontalAlignment="Center" 
+                   FontSize="16"
+                   Foreground="White"
+                   FontWeight="Bold"/>
+            </Border>
+
+            <!-- Список блоков -->
+            <ListView x:Name="BlocksListView"
+              Grid.Row="1"
+              Background="Transparent"
+              Foreground="White"
+              BorderThickness="0"
+              ItemTemplate="{StaticResource BlockItemTemplate}"
+              ItemsSource="{x:Bind Blocks, Mode=OneWay}"
+              CanDragItems="True"
+              CanReorderItems="False"
+              AllowDrop="False"
+              DragItemsStarting="BlocksList_DragItemsStarting">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Margin" Value="5,2"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                
+            </ListView>
+        </Grid>
+
+        <Grid Grid.Row="2" Grid.Column="1" Background="#FF1E1E1E">
+            <ScrollViewer x:Name="MainScrollViewer"
+                 HorizontalScrollBarVisibility="Auto" 
+                 VerticalScrollBarVisibility="Auto"
+                 ZoomMode="Enabled"
+                 Background="Transparent">
+
+                <Canvas x:Name="FlowchartCanvas" 
+               Width="3000" 
+               Height="3000"
+               Background="Transparent">
+
+                    <Canvas x:Name="GridCanvas"
+            Width="3000"
+            Height="3000"
+            Background="Transparent"
+            IsHitTestVisible="False"/>
+
+                    <Canvas x:Name="ConnectionsCanvas" 
+                   Width="3000" 
+                   Height="3000"
+                   Background="Transparent"/>
+
+                    <Canvas x:Name="BlocksCanvas" 
+                   Width="3000" 
+                   Height="3000"
+                   IsTabStop="True"
+                   Background="Transparent"/>
+                    <Border x:Name="VariablePreviewPanel" 
+            Visibility="Collapsed" 
+            Background="#CC000000"  BorderBrush="#FF777777" 
+            BorderThickness="1" 
+            CornerRadius="4" 
+            Padding="5">
+                        <StackPanel x:Name="VariablePreviewStackPanel">
+                        </StackPanel>
+                    </Border>
+                </Canvas>
+            </ScrollViewer>
+            <StackPanel Orientation="Horizontal" 
+               HorizontalAlignment="Right" 
+               VerticalAlignment="Bottom"
+               Margin="20"
+               Spacing="10">
+                <Button x:Name="ZoomInButton" 
+               Content="➕" 
+               Width="40" 
+               Height="40"
+               Click="ZoomInButton_Click"
+               ToolTipService.ToolTip="Увеличить"/>
+                <Button x:Name="ZoomOutButton" 
+               Content="➖" 
+               Width="40" 
+               Height="40"
+               Click="ZoomOutButton_Click"
+               ToolTipService.ToolTip="Уменьшить"/>
+                <Button x:Name="ResetZoomButton" 
+               Content="↺" 
+               Width="40" 
+               Height="40"
+               Click="ResetZoomButton_Click"
+               ToolTipService.ToolTip="Сбросить масштаб"/>
+            </StackPanel>
+            <Border x:Name="NotificationContainer"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,20"
+                    Background="#2A2A2A"
+                    BorderBrush="#444444"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="15,10"
+                    Opacity="0"
+                    Visibility="Collapsed"
+                    >
+                <TextBlock x:Name="NotificationTextBlock"
+                           Foreground="White"
+                           FontSize="14"
+                           Text="Уведомление"
+                           TextWrapping="Wrap"
+                           MaxWidth="300"></TextBlock>
+            </Border>
+        </Grid>
+
+          <!-- TabView с вкладками --><!--
+        <TabView x:Name="MainTabView"
+                 Grid.Row="2"
+                 TabWidthMode="SizeToContent"
+                 CanDragTabs="True"
+                 CanReorderTabs="True"
+                 AddTabButtonClick="MainTabView_AddTabButtonClick"
+                 TabCloseRequested="MainTabView_TabCloseRequested"
+                 SelectionChanged="MainTabView_SelectionChanged">
+        </TabView>-->
+
+        <!-- Область отладки и трассировки -->
+        <Grid Grid.Row="2" Grid.Column="2" Width="250">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <ScrollViewer Grid.Row="0" Margin="5">
+                <TextBlock x:Name="TraceTextBlock"
+                   Text="Область для отладки и трассировки"
+                   Foreground="White"
+                   TextWrapping="Wrap"/>
+            </ScrollViewer>
+
+            <!--<Border Grid.Row="1" BorderThickness="1" BorderBrush="#555" Padding="5" Background="#222">
+                <ScrollViewer>
+                    <TextBlock x:Name="PseudocodeTextBlock"
+                       Text="Псевдокод появится здесь..."
+                       Foreground="LightGreen"
+                       FontFamily="Consolas"
+                       TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>-->
+        </Grid>
+    </Grid>
+</Window>

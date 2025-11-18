@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Blocks! (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Blocks! (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

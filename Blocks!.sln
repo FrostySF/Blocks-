@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blocks!", "Blocks!.csproj", "{7B9531E5-5A0E-4871-9217-85C0813F316D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
+	ProjectSection(SolutionItems) = preProject
+		ToolboxItem.cs = ToolboxItem.cs
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|ARM64 = Release|ARM64
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x64.ActiveCfg = Debug|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x64.Build.0 = Debug|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x64.Deploy.0 = Debug|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x86.ActiveCfg = Debug|x86
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x86.Build.0 = Debug|x86
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Debug|x86.Deploy.0 = Debug|x86
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|ARM64.Build.0 = Release|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|ARM64.Deploy.0 = Release|ARM64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x64.ActiveCfg = Release|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x64.Build.0 = Release|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x64.Deploy.0 = Release|x64
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x86.ActiveCfg = Release|x86
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x86.Build.0 = Release|x86
+		{7B9531E5-5A0E-4871-9217-85C0813F316D}.Release|x86.Deploy.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {693547F6-7CF1-4E6A-887C-DF36A495D64C}
+	EndGlobalSection
+EndGlobal
