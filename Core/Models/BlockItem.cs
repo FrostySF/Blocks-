@@ -10,17 +10,17 @@ namespace Blocks_.Core.Models
     {
         public BlockItem()
         {
-            // XmlSerializer требует конструктор без параметров
             Id = Guid.NewGuid();
         }
 
         public string Name { get; set; }
         public string Icon { get; set; }
         public string Description { get; set; }
+        public string Docs { get;set; }
+        public string Shot { get; set; }
         public string Code { get; set; }
         public BlockType Type { get; set; }
 
-        // Сохраняем координаты GridPosition через вспомогательные свойства
         [XmlIgnore]
         public GridNode GridPosition { get; set; }
 
@@ -28,17 +28,15 @@ namespace Blocks_.Core.Models
         public int GridRow
         {
             get => GridPosition?.Row ?? -1;
-            set { } // Setter нужен для десериализации, но значение устанавливается в LoadFromFile
+            set { }
         }
 
         [XmlElement("GridColumn")]
         public int GridColumn
         {
             get => GridPosition?.Column ?? -1;
-            set { } // Setter нужен для десериализации
+            set { } 
         }
-
-        // UI-свойства не сериализуются
         [XmlIgnore]
         public SolidColorBrush BackgroundColor
         {
@@ -95,6 +93,7 @@ namespace Blocks_.Core.Models
         For,
 
         LoopConnector,
+        DoLoopConnector,
         VariableDeclaration,
         ArrayDeclaration,
 

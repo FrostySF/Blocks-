@@ -8,18 +8,32 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Blocks_
 {
+    public class TraceEntry
+    {
+        public int Step { get; set; }
+        public string BlockType { get; set; }
+        public string BlockCode { get; set; }
+        public string Variable { get; set; }
+        public double OldValue { get; set; }
+        public double NewValue { get; set; }
+        public string Comment { get; set; }
+    }
     public partial class MainWindow
     {
         private Dictionary<string, double> variables = new();
         private HashSet<string> declaredVariables = new();
-
+        private Dictionary<string, double> initialVariables = new();
+        private List<TraceEntry> traceLog = new();
         // Хранилища для массивов
         private Dictionary<string, double[]> vectors = new();
         private Dictionary<string, double[,]> matrices = new();
         private HashSet<string> declaredArrays = new();
+
+        private Dictionary<BlockItem, bool> forLoopInitialized = new();
 
         private bool IsIdentifier(string name)
         {
@@ -27,9 +41,40 @@ namespace Blocks_
             return (char.IsLetter(name[0]) || name[0] == '_') &&
                    name.All(c => char.IsLetterOrDigit(c) || c == '_');
         }
-
+        private void ClearExecutionState()
+        {
+            traceLog.Clear();
+            initialVariables.Clear();
+            forLoopInitialized.Clear();
+        }
+        private void SaveInitialVariables()
+        {
+            initialVariables.Clear();
+            foreach (var kvp in variables)
+            {
+                initialVariables.Add(kvp.Key, kvp.Value);
+            }
+        }
+        public void LogVariableChange(BlockItem block, string varName, double oldValue, double newValue, string comment = "")
+        {
+            if (Math.Abs(oldValue - newValue) > double.Epsilon || traceLog.Count == 0 || !initialVariables.ContainsKey(varName))
+            {
+                traceLog.Add(new TraceEntry
+                {
+                    Step = traceLog.Count + 1,
+                    BlockType = block.Type.ToString(),
+                    BlockCode = block.Code,
+                    Variable = varName,
+                    OldValue = oldValue,
+                    NewValue = newValue,
+                    Comment = comment
+                });
+            }
+        }
         private bool InitializeVariables()
         {
+
+            ClearExecutionState();
             ClearVariablePreviewPanels();
 
             variables.Clear();
@@ -38,7 +83,7 @@ namespace Blocks_
             matrices.Clear();
             declaredArrays.Clear();
 
-            // Инициализация простых переменных
+            // Инициализация переменных
             var declarationBlock = listofblocks.FirstOrDefault(b => b.Type == BlockType.VariableDeclaration);
             if (declarationBlock != null && !string.IsNullOrWhiteSpace(declarationBlock.Code))
             {
@@ -56,7 +101,7 @@ namespace Blocks_
                         return false;
                 }
             }
-
+            SaveInitialVariables();
             return true;
         }
 
@@ -137,10 +182,9 @@ namespace Blocks_
                     return false;
                 }
 
-                // ВАЖНО: Сразу добавляем имя массива в declaredArrays перед парсингом значений
                 declaredArrays.Add(arrayName);
 
-                // Проверка: матрица или вектор
+
                 if (!string.IsNullOrEmpty(size2))
                 {
                     // Это матрица
@@ -157,7 +201,7 @@ namespace Blocks_
                         else
                         {
                             TraceTextBlock.Text += $"\n[Error] Размеры матрицы должны быть указаны";
-                            declaredArrays.Remove(arrayName); // Откатываем регистрацию
+                            declaredArrays.Remove(arrayName);
                             return false;
                         }
                     }
@@ -167,7 +211,7 @@ namespace Blocks_
                         if (matrix == null)
                         {
                             TraceTextBlock.Text += $"\n[Error] Ошибка парсинга значений матрицы";
-                            declaredArrays.Remove(arrayName); // Откатываем регистрацию
+                            declaredArrays.Remove(arrayName); 
                             return false;
                         }
                         matrices[arrayName] = matrix;
@@ -189,7 +233,7 @@ namespace Blocks_
                         else
                         {
                             TraceTextBlock.Text += $"\n[Error] Размер вектора должен быть указан";
-                            declaredArrays.Remove(arrayName); // Откатываем регистрацию
+                            declaredArrays.Remove(arrayName); 
                             return false;
                         }
                     }
@@ -199,7 +243,7 @@ namespace Blocks_
                         if (vector == null)
                         {
                             TraceTextBlock.Text += $"\n[Error] Ошибка парсинга значений вектора";
-                            declaredArrays.Remove(arrayName); // Откатываем регистрацию
+                            declaredArrays.Remove(arrayName); 
                             return false;
                         }
 
@@ -282,17 +326,16 @@ namespace Blocks_
             if (node.Block == null)
                 return true;
 
-            // Пропускаем блоки объявлений
             if (node.Block.Type == BlockType.VariableDeclaration ||
                 node.Block.Type == BlockType.ArrayDeclaration)
             {
-                TraceTextBlock.Text += $"\n[{node.Block.Type}] Блок пропущен (инициализация)";
+                TraceTextBlock.Text += $"\n[{node.Block.Type}] Блок пропущен (инициализация) => {node.Block.Code}";
                 return true;
             }
 
-            string code = node.Block.Code?.Trim() ?? "";
+            string code = node.Block.Code?.Trim(',') ?? "";
 
-            var evaluator = new ArrayExpressionEvaluator(variables, declaredVariables,
+            var eval = new ArrayExpressionEvaluator(variables, declaredVariables,
                                                          vectors, matrices, declaredArrays);
 
             try
@@ -303,7 +346,7 @@ namespace Blocks_
                     case BlockType.While:
                         if (string.IsNullOrWhiteSpace(code))
                             return true;
-                        double result = evaluator.Evaluate(code);
+                        double result = eval.Evaluate(code);
                         TraceTextBlock.Text += $"\n[{node.Block.Type}] {code} → {(result != 0 ? "true" : "false")}";
                         return result != 0;
 
@@ -312,11 +355,11 @@ namespace Blocks_
                             return true;
                         if (code.Contains("="))
                         {
-                            ExecuteAssignment(code, evaluator);
+                            ExecuteAssignment(code, eval);
                         }
                         else
                         {
-                            double val = evaluator.Evaluate(code);
+                            double val = eval.Evaluate(code);
                             TraceTextBlock.Text += $"\n{code} → {val}";
                         }
                         break;
@@ -324,7 +367,7 @@ namespace Blocks_
                     case BlockType.Output:
                         if (string.IsNullOrWhiteSpace(code))
                             return true;
-                        ExecuteOutput(code, evaluator);
+                        ExecuteOutput(code, eval);
                         break;
 
                     case BlockType.Input:
@@ -343,79 +386,88 @@ namespace Blocks_
                         }
                         else
                         {
-                            TraceTextBlock.Text += $"\n[Error] '{code}' не объявлена. Проверьте:";
-                            TraceTextBlock.Text += $"\n  - Для массивов: создайте блок 'Массивы' с именем '{code}'";
-                            TraceTextBlock.Text += $"\n  - Для переменных: добавьте '{code}' в блок 'Описание переменных'";
+                            TraceTextBlock.Text += $"\n[Error] '{code}' не объявлена";
                             return false;
                         }
                         break;
 
                     case BlockType.DoWhile:
-                        if (string.IsNullOrWhiteSpace(code))
-                            return true;
-                        double doWhileResult = evaluator.Evaluate(code);
-                        TraceTextBlock.Text += $"\n[DO-WHILE] {code} → {(doWhileResult != 0 ? "true (повтор)" : "false (выход)")}";
-                        return doWhileResult != 0;
-
+                        TraceTextBlock.Text += $"\n[DO-WHILE] Вход в тело цикла !!!";
+                        return true; 
                     case BlockType.For:
                         if (string.IsNullOrWhiteSpace(code))
                             return true;
-
-                        // Разбираем конструкцию FOR: "init; condition; step"
                         var forParts = code.Split(';').Select(p => p.Trim()).ToArray();
 
-                        if (forParts.Length == 3)
+                        if (forParts.Length != 3)
                         {
-                            string init = forParts[0];
-                            string condition = forParts[1];
-                            string step = forParts[2];
-
-                            if (!node.Block.Code.Contains("__initialized__"))
-                            {
-                                ExecuteAssignment(init, evaluator);
-                                node.Block.Code += "__initialized__"; // Маркер инициализации
-                                TraceTextBlock.Text += $"\n[FOR] Инициализация: {init}";
-                            }
-
-                            // Проверяем условие
-                            double condResult = evaluator.Evaluate(condition);
-                            TraceTextBlock.Text += $"\n[FOR] Условие: {condition} → {(condResult != 0 ? "true" : "false")}";
-
-                            if (condResult != 0)
-                            {
-                                return true;
-                            }
-                            else
-                            {
-                                node.Block.Code = node.Block.Code.Replace("__initialized__", "");
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            TraceTextBlock.Text += $"\n[Error] Неверный формат FOR: {code}";
+                            TraceTextBlock.Text += $"\n[Error] Неверный формат FOR: {code}. ";
                             return false;
                         }
 
+                        string init = forParts[0];
+                        string condition = forParts[1];
+                        if (!forLoopInitialized.ContainsKey(node.Block) || !forLoopInitialized[node.Block])
+                        {
+                            ExecuteAssignment(init, eval);
+                            forLoopInitialized[node.Block] = true;
+                            ShowNotification("for loop");
+                            TraceTextBlock.Text += $"\n[FOR] Инициализация: {init}";
+                        }
+
+                        double condResult = eval.Evaluate(condition);
+                        TraceTextBlock.Text += $"\n[FOR] Условие: {condition} → {(condResult != 0 ? "true" : "false")}";
+
+                        if (condResult != 0)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            forLoopInitialized[node.Block] = false;
+                            return false;
+                        }
 
                     case BlockType.LoopConnector:
-                        var parentConnection = connectionLines.FirstOrDefault(cl => cl.ToBlock == node.Block);
-                        if (parentConnection != null && parentConnection.FromBlock.Type == BlockType.For)
-                        {
-                            var forBlock = parentConnection.FromBlock;
-                            var forParts2 = forBlock.Code.Replace("__initialized__", "").Split(';').Select(p => p.Trim()).ToArray();
 
-                            if (forParts2.Length == 3)
+                        BlockItem loopBlock = FindParentLoop(node.Block);
+
+                        if (loopBlock != null)
+                        {
+                            if (loopBlock.Type == BlockType.For)
                             {
-                                string step = forParts2[2];
-                                ExecuteAssignment(step, evaluator);
-                                TraceTextBlock.Text += $"\n[FOR] Инкремент: {step}";
+                                var forParts2 = loopBlock.Code.Split(';').Select(p => p.Trim()).ToArray();
+                                if (forParts2.Length == 3)
+                                {
+                                    string step = forParts2[2];
+                                    ExecuteAssignment(step, eval);
+                                    TraceTextBlock.Text += $"\n[FOR] Инкремент: {step}";
+                                }
+                            }
+                            else if (loopBlock.Type == BlockType.While)
+                            {
+                                TraceTextBlock.Text += $"\n[WHILE] Возврат к проверке условия";
+                            }
+                        }
+                        return true;
+
+                    case BlockType.DoLoopConnector:
+                        var doParentConnection = connectionLines.FirstOrDefault(cl => cl.ToBlock == node.Block);
+
+                        if (doParentConnection != null && doParentConnection.FromBlock.Type == BlockType.DoWhile)
+                        {
+                            var doWhileBlock = doParentConnection.FromBlock;
+                            string doCondition = doWhileBlock.Code?.Trim() ?? "";
+
+                            if (!string.IsNullOrWhiteSpace(doCondition))
+                            {
+                                double doResult = eval.Evaluate(doCondition);
+                                TraceTextBlock.Text += $"\n[DO-WHILE] Условие: {doCondition} → {(doResult != 0 ? "true (повтор)" : "false (выход)")}";
+                                return doResult != 0; 
                             }
                         }
 
-                        TraceTextBlock.Text += $"\n[Junction] Обратный переход";
                         return true;
-
                 }
 
                 UpdateBlockVariableState(node.Block, variables);
@@ -427,13 +479,35 @@ namespace Blocks_
                 return false;
             }
         }
+        private BlockItem FindParentLoop(BlockItem connectorBlock)
+        {
+            var visited = new HashSet<BlockItem>();
+            var current = connectorBlock;
 
+            while (current != null && !visited.Contains(current))
+            {
+                visited.Add(current);
+
+                var incomingConnection = connectionLines.FirstOrDefault(cl => cl.ToBlock == current);
+
+                if (incomingConnection == null)
+                    break;
+
+                var fromBlock = incomingConnection.FromBlock;
+                if (fromBlock.Type == BlockType.For ||
+                    fromBlock.Type == BlockType.While ||
+                    fromBlock.Type == BlockType.DoWhile)
+                    return fromBlock;
+
+                current = fromBlock;
+            }
+
+            return null;
+        }
         private void ExecuteOutput(string code, ArrayExpressionEvaluator evaluator)
         {
-            // Проверяем, является ли это массивом
             if (declaredArrays.Contains(code))
             {
-                // Вывод всего массива
                 if (vectors.TryGetValue(code, out var vector))
                 {
                     var values = string.Join(", ", vector.Select(v => v.ToString("G5")));
@@ -554,7 +628,6 @@ namespace Blocks_
 
             if (isVector)
             {
-                // Ввод вектора
                 var vector = vectors[arrayName];
                 var titleText = new TextBlock
                 {
@@ -565,7 +638,6 @@ namespace Blocks_
 
                 var inputBoxes = new List<TextBox>();
 
-                // Создаем поля ввода для каждого элемента
                 for (int i = 0; i < vector.Length; i++)
                 {
                     var rowPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
@@ -584,43 +656,35 @@ namespace Blocks_
                         Width = 150
                     };
 
-                    // --- НОВОЕ: Обработчик нажатия клавиши Enter ---
                     inputBox.KeyDown += (sender, e) =>
                     {
                         if (e.Key == Windows.System.VirtualKey.Enter)
                         {
-                            e.Handled = true; // Останавливаем стандартную обработку (если есть)
+                            e.Handled = true;
 
-                            // Находим текущий элемент (текстбокс)
                             var currentTextBox = (TextBox)sender;
 
-                            // Пытаемся найти следующий элемент в родительском StackPanel
-                            var parentPanel = (StackPanel)currentTextBox.Parent; // Это rowPanel
-                            var grandParentPanel = (StackPanel)parentPanel.Parent; // Это mainPanel
+                            var parentPanel = (StackPanel)currentTextBox.Parent; 
+                            var grandParentPanel = (StackPanel)parentPanel.Parent; 
 
                             int currentIndex = grandParentPanel.Children.IndexOf(parentPanel);
-
-                            // Индекс следующего элемента
                             int nextIndex = currentIndex + 1;
 
                             if (nextIndex < grandParentPanel.Children.Count)
                             {
-                                // Находим следующий StackPanel (rowPanel)
                                 var nextRowPanel = grandParentPanel.Children[nextIndex] as StackPanel;
 
-                                // Находим следующий TextBox внутри него (второй элемент в rowPanel)
                                 var nextTextBox = nextRowPanel?.Children[1] as TextBox;
 
                                 if (nextTextBox != null)
                                 {
-                                    // Переводим фокус на следующий TextBox
                                     nextTextBox.Focus(FocusState.Keyboard);
+                                    nextTextBox.SelectAll();
                                     return;
                                 }
                             }
                         }
                     };
-                    // --------------------------------------------------
 
                     inputBoxes.Add(inputBox);
                     rowPanel.Children.Add(label);
@@ -665,7 +729,6 @@ namespace Blocks_
             }
             else if (isMatrix)
             {
-                // Ввод матрицы
                 var matrix = matrices[arrayName];
                 int rows = matrix.GetLength(0);
                 int cols = matrix.GetLength(1);
@@ -679,7 +742,6 @@ namespace Blocks_
 
                 var inputBoxes = new TextBox[rows, cols];
 
-                // Создаем таблицу полей ввода
                 for (int i = 0; i < rows; i++)
                 {
                     var rowPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
@@ -701,19 +763,15 @@ namespace Blocks_
                             Width = 60,
                             Margin = new Thickness(2)
                         };
-
-                        // --- ОБНОВЛЕННЫЙ: Обработчик нажатия клавиши Enter для матрицы ---
                         inputBox.KeyDown += (sender, e) =>
                         {
                             if (e.Key == Windows.System.VirtualKey.Enter)
                             {
                                 e.Handled = true;
 
-                                // Ищем текущие индексы (i, j) в массиве inputBoxes
+
                                 int currentI = -1, currentJ = -1;
                                 var currentTextBox = (TextBox)sender;
-
-                                // Необходимо найти индексы текущего TextBox в массиве inputBoxes
                                 for (int findI = 0; findI < rows; findI++)
                                 {
                                     for (int findJ = 0; findJ < cols; findJ++)
@@ -728,12 +786,11 @@ namespace Blocks_
                                     if (currentI != -1) break;
                                 }
 
-                                if (currentI == -1) return; // Элемент не найден
+                                if (currentI == -1) return;
 
                                 int nextI = currentI;
-                                int nextJ = currentJ + 1; // Сначала пытаемся перейти к следующему столбцу
+                                int nextJ = currentJ + 1;
 
-                                // Проверяем, не вышли ли за пределы строки
                                 if (nextJ >= cols)
                                 {
                                     nextI = currentI + 1;
@@ -743,6 +800,7 @@ namespace Blocks_
                                 {
                                     var nextTextBox = inputBoxes[nextI, nextJ];
                                     nextTextBox.Focus(FocusState.Keyboard);
+                                    nextTextBox.SelectAll();
                                 }
                                 else
                                 {
@@ -750,7 +808,6 @@ namespace Blocks_
                                 }
                             }
                         };
-                        // --------------------------------------------------
 
                         inputBoxes[i, j] = inputBox;
                         rowPanel.Children.Add(inputBox);
@@ -810,6 +867,141 @@ namespace Blocks_
                 }
             }
         }
+        #region TRACe!
+        public async void ShowTraceResults()
+        {
+            var stackPanel = new StackPanel { Spacing = 10, Padding = new Thickness(10) };
+
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "Начальные и Конечные значения",
+                FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+                Margin = new Microsoft.UI.Xaml.Thickness(0, 0, 0, 10)
+            });
+
+            var varGrid = new Grid();
+            varGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            varGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            varGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var headerStyle = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.LightGray);
+            var borderThickness = new Thickness(0.5);
+
+            // Заголовки таблицы переменных
+            AddCell(varGrid, 0, 0, "Переменная", true, headerStyle, borderThickness);
+            AddCell(varGrid, 0, 1, "Начальное значение", true, headerStyle, borderThickness);
+            AddCell(varGrid, 0, 2, "Конечное значение", true, headerStyle, borderThickness);
+
+            var allVariables = variables.Keys.Union(initialVariables.Keys).Distinct().ToList();
+            int row = 1;
+
+            foreach (var varName in allVariables)
+            {
+                string initial = initialVariables.ContainsKey(varName) ? initialVariables[varName].ToString("0.###") : "—";
+                string final = variables.ContainsKey(varName) ? variables[varName].ToString("0.###") : "—";
+
+                AddCell(varGrid, row, 0, varName, false, null, borderThickness);
+                AddCell(varGrid, row, 1, initial, false, null, borderThickness);
+                AddCell(varGrid, row, 2, final, false, null, borderThickness);
+                row++;
+            }
+
+            var varScrollViewer = new ScrollViewer
+            {
+                Content = varGrid,
+                MaxHeight = 250,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+            stackPanel.Children.Add(varScrollViewer);
+            stackPanel.Children.Add(new Microsoft.UI.Xaml.Shapes.Rectangle { Height = 1, Fill = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray), Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10) });
+
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "Таблица трассировки",
+                FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+                Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10)
+            });
+
+            var traceGrid = new Grid();
+            traceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) }); // №
+            traceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) }); // Блок/Код
+            traceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) }); // Переменная
+            traceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Изменение
+            traceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }); // Комментарий
+
+            row = 0;
+            AddCell(traceGrid, row, 0, "№", true, headerStyle, borderThickness);
+            AddCell(traceGrid, row, 1, "Блок/Код", true, headerStyle, borderThickness);
+            AddCell(traceGrid, row, 2, "Переменная", true, headerStyle, borderThickness);
+            AddCell(traceGrid, row, 3, "Изменение", true, headerStyle, borderThickness);
+            AddCell(traceGrid, row, 4, "Комментарий", true, headerStyle, borderThickness);
+            row++;
+
+            foreach (var entry in traceLog)
+            {
+                AddCell(traceGrid, row, 0, entry.Step.ToString(), false, null, borderThickness);
+                AddCell(traceGrid, row, 1, $"{entry.BlockType}\n({entry.BlockCode})", false, null, borderThickness);
+                AddCell(traceGrid, row, 2, entry.Variable, false, null, borderThickness);
+                AddCell(traceGrid, row, 3, $"{entry.OldValue.ToString("0.###")} → {entry.NewValue.ToString("0.###")}", false, null, borderThickness);
+                AddCell(traceGrid, row, 4, entry.Comment, false, null, borderThickness);
+                row++;
+            }
+
+            var traceScrollViewer = new ScrollViewer
+            {
+                Content = traceGrid,
+                MaxHeight = 400,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+
+            //stackPanel.Children.Add(traceScrollViewer);
+
+            var dialog = new ContentDialog
+            {
+                Title = "Результаты выполнения блок-схемы",
+                Content = stackPanel,
+                CloseButtonText = "Закрыть",
+                SecondaryButtonText = "Копировать данные",
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Secondary)
+                CopyTraceReportToClipboard();
+
+        }
+
+        private void AddCell(Grid grid, int row, int column, string text, bool isHeader, Microsoft.UI.Xaml.Media.Brush background, Microsoft.UI.Xaml.Thickness borderThickness)
+        {
+            if (grid.RowDefinitions.Count <= row)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            }
+
+            var textBlock = new TextBlock
+            {
+                Text = text,
+                Margin = new Thickness(5),
+                FontWeight = isHeader ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            var border = new Border
+            {
+                Child = textBlock,
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.LightGray),
+                BorderThickness = borderThickness,
+                Padding = new Thickness(5),
+                Background = background
+            };
+
+            Grid.SetRow(border, row);
+            Grid.SetColumn(border, column);
+            grid.Children.Add(border);
+        }
+ 
 
         private async Task InputShow(BlockItem block)
         {
@@ -833,7 +1025,6 @@ namespace Blocks_
                 CloseButtonText = "Отмена",
                 XamlRoot = Content.XamlRoot
             };
-            // 1. Создаем флаг, чтобы отследить нажатие Enter
             bool isPrimaryResultSimulated = false;
 
             descBox.KeyDown += (s, e) =>
@@ -841,8 +1032,8 @@ namespace Blocks_
                 if (e.Key == Windows.System.VirtualKey.Enter)
                 {
                     e.Handled = true;
-                    isPrimaryResultSimulated = true; // 2. Устанавливаем флаг
-                    dialog.Hide(); // 3. Вызываем Hide() без аргументов
+                    isPrimaryResultSimulated = true;
+                    dialog.Hide();
                 }
             };
 
@@ -853,7 +1044,9 @@ namespace Blocks_
             {
                 if (double.TryParse(descBox.Text, out double value))
                 {
+                    double oldValue = variables.ContainsKey(block.Code) ? variables[block.Code] : 0.0;
                     variables[block.Code] = value;
+                    LogVariableChange(block, block.Code, oldValue, value, "Ввод пользователя");
                     TraceTextBlock.Text += $"\n[Input] {block.Code} = {value}";
                 }
                 else
@@ -862,5 +1055,6 @@ namespace Blocks_
                 }
             }
         }
+        #endregion  
     }
 }

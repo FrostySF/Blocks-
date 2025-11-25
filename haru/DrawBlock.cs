@@ -84,7 +84,7 @@ namespace Blocks_.haru
                         }
                     };
                     break;
-                case BlockType.While: // Ромб для условия цикла (while)
+                case BlockType.While: 
                     shape = new Polygon
                     {
                         Fill = item.BackgroundColor,
@@ -100,8 +100,7 @@ namespace Blocks_.haru
                     };
                     break;
 
-                    break;
-                case BlockType.DoWhile: // Ромб для условия цикла (while)
+                case BlockType.DoWhile:
                     shape = new Polygon
                     {
                         Fill = item.BackgroundColor,
@@ -117,19 +116,18 @@ namespace Blocks_.haru
                     };
                     break;
 
-                case BlockType.LoopConnector: // НОВОЕ: Круг-соединитель
-                                              // Уменьшаем размер сетки для круга
+                case BlockType.LoopConnector:
+                case BlockType.DoLoopConnector:
                     shape = new Ellipse
                     {
                         Width = grid.Width / 3,
                         Height = grid.Height / 2,
-                        Fill = item.BackgroundColor, // Белый
-                        Stroke = new SolidColorBrush(Colors.Black), // Черная граница
+                        Fill = item.BackgroundColor,
+                        Stroke = new SolidColorBrush(Colors.Black),
                         StrokeThickness = 2
                     };
                     break;
                 case BlockType.For:
-                    // Шестиугольник для цикла
                     double indent = 15;
                     shape = new Polygon
                     {
@@ -163,7 +161,7 @@ namespace Blocks_.haru
                     };
                     break;
 
-                case BlockType.VariableDeclaration: // <--- ДОБАВЛЕНО
+                case BlockType.VariableDeclaration:
                     shape = new Rectangle
                     {
                         Fill = item.BackgroundColor,
@@ -174,8 +172,7 @@ namespace Blocks_.haru
                     };
                     break;
 
-                case BlockType.ArrayDeclaration: // НОВЫЙ ТИП - Массивы
-                    // Создаем двойной прямоугольник для визуального отличия
+                case BlockType.ArrayDeclaration:
                     var outerRect = new Rectangle
                     {
                         Fill = item.BackgroundColor,
@@ -242,7 +239,6 @@ namespace Blocks_.haru
                     break;
             }
 
-            // Текст с кодом блока или названием
             var textBlock = new TextBlock
             {
                 Text = item.Name,
@@ -273,7 +269,6 @@ namespace Blocks_.haru
             grid.Children.Add(textBlock);
             grid.Children.Add(codeBlock);
 
-            // Создаём якоря для соединений
             var anchors = CreateAnchors(item, grid);
             foreach (var a in anchors)
                 grid.Children.Add(a);
@@ -302,28 +297,24 @@ namespace Blocks_.haru
             {
                 list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(1.0, 0.5), Colors.LimeGreen));
                 list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(0.0, 0.5), Colors.IndianRed));
-                list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.5, 1.0), Colors.White));
+               // list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.5, 1.0), Colors.White));
             }
 
-            // Конфигурация якорей в зависимости от типа блока
             if (item.Type == BlockType.While)
             {
-                // ЦИКЛ WHILE (ромб):
-                // - Левый: принимает обратную связь от тела (LoopBody - вход тела)
-                // - Правый: выход из цикла (FalseBranch - "Нет")
-                // - Нижний: выход к телу цикла (LoopBody - "Да", к соединителю)
-
-                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.LimeGreen)); // Левый - вход от тела
-                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(1.0, 0.5), Colors.IndianRed)); // Правый - выход из цикла
-                list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(0.5, 1.0), Colors.DeepSkyBlue)); // Нижний - к телу цикла
+                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.LimeGreen));
+                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(1.0, 0.5), Colors.IndianRed));
+                list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(0.5, 1.0), Colors.DeepSkyBlue));
             }
             else if (item.Type == BlockType.LoopConnector)
             {
-                // СОЕДИНИТЕЛЬ (круг - тело цикла):
-                // - Верхний: вход (уже есть как Input)
-                // - Левый: выход обратно к условию цикла
-
-                list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.0, 0.5), Colors.White)); // Левый - обратно к циклу
+                list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.0, 0.5), Colors.White));
+            }
+            else if (item.Type == BlockType.DoLoopConnector)
+            {
+                list.Add(CreateAnchor(item, ConnectionType.Input, new Point(0.5, 0.0), Colors.White));
+                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.DeepSkyBlue));
+                list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.5, 1.0), Colors.White));
             }
             else if (item.Type == BlockType.Loop)
             {
@@ -332,27 +323,18 @@ namespace Blocks_.haru
             }
             else if (item.Type == BlockType.For)
             {
-                // ЦИКЛ FOR:
-                // - Левый: LoopBody = возврат с инкрементом (тело -> for)
-                // - Правый: TrueBranch = переход к телу
-                // - Нижний: FalseBranch = выход из цикла
 
-                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.DeepSkyBlue));  // обратная связь (step)
-                list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(1.0, 0.5), Colors.LimeGreen)); // переход к телу
-                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(0.5, 1.0), Colors.IndianRed)); // выход
+                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.DeepSkyBlue)); 
+                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(1.0, 0.5), Colors.IndianRed));
+                list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(0.5, 1.0), Colors.LimeGreen)); 
             }
             else if (item.Type == BlockType.DoWhile)
             {
-                // DO-WHILE:
-                // - Левый: LoopBody = начальный вход тела
-                // - Правый: TrueBranch = повторить (к телу)
-                // - Нижний: FalseBranch = выход после цикла
-
-                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.DeepSkyBlue)); // вход тела (первый запуск)
-                list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(1.0, 0.5), Colors.LimeGreen)); // повтор
-                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(0.5, 1.0), Colors.IndianRed)); // выход
+                list.Add(CreateAnchor(item, ConnectionType.LoopBody, new Point(0.0, 0.5), Colors.DeepSkyBlue));
+                //list.Add(CreateAnchor(item, ConnectionType.TrueBranch, new Point(1.0, 0.5), Colors.LimeGreen));
+                list.Add(CreateAnchor(item, ConnectionType.FalseBranch, new Point(1.0, 0.5), Colors.IndianRed));
             }
-            else if (item.Type != BlockType.End)
+            else if (item.Type != BlockType.End && item.Type != BlockType.Decision && item.Type != BlockType.DoWhile)
             {
                 list.Add(CreateAnchor(item, ConnectionType.Normal, new Point(0.5, 1.0), Colors.White));
             }
@@ -373,8 +355,6 @@ namespace Blocks_.haru
                 Tag = (block, type),
                 Opacity = 0.9
             };
-
-            // Контейнер для расширенной зоны клика
             var hitBox = new Border
             {
                 Width = 25,
@@ -383,8 +363,6 @@ namespace Blocks_.haru
                 Child = anchor,
                 Tag = (block, type)
             };
-
-            // Определяем выравнивание всего hitBox (по сетке)
             if (relativePos.X < 0.25)
                 hitBox.HorizontalAlignment = HorizontalAlignment.Left;
             else if (relativePos.X > 0.75)
@@ -399,8 +377,7 @@ namespace Blocks_.haru
             else
                 hitBox.VerticalAlignment = VerticalAlignment.Center;
 
-            // ⚙️ Сдвигаем сам кружок внутри hitBox, чтобы он лежал на границе
-            var margin = -2.0; // расстояние от границы блока
+            var margin = -2.0;
 
             double offsetX = 0, offsetY = 0;
             if (relativePos.X < 0.25)

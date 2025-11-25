@@ -2,6 +2,7 @@
 using Blocks_.haru;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,10 +11,13 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Windows.ApplicationModel;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Clipboard = Windows.ApplicationModel.DataTransfer.Clipboard;
 
 namespace Blocks_
 {
@@ -28,12 +32,70 @@ namespace Blocks_
         /// <summary>
         /// Привязка координаты к виртуальной сетке
         /// </summary>
-        private double SnapToGrid(double value) => Math.Round(value / GRID_STEP) * GRID_STEP;
+        private double SnapToGrid(double value)
+        {
+            if (!SettingsWindow.AppSettings.SnapToGrid)
+                return value;
+            int gridStep = SettingsWindow.AppSettings.GridStep;
+            return Math.Round(value / gridStep) * gridStep;
+        }
+
+        /// <summary>
+        /// Генерирует форматированный текст отчета о трассировке для копирования в буфер обмена.
+        /// </summary>
+        private string GenerateTraceReportText()
+        {
+            var sb = new StringBuilder();
+            string separator = new string('-', 80);
+
+            sb.AppendLine("Переменная\tНачальное значение\tКонечное значение");
+            sb.AppendLine(separator);
+
+            var allVariables = variables.Keys.Union(initialVariables.Keys).Distinct().ToList();
+
+            foreach (var varName in allVariables)
+            {
+                string initial = initialVariables.ContainsKey(varName) ? initialVariables[varName].ToString("0.###") : "—";
+                string final = variables.ContainsKey(varName) ? variables[varName].ToString("0.###") : "—";
+                sb.AppendLine($"{varName}\t{initial}\t{final}");
+            }
+
+            sb.AppendLine("\n");
+
+            // Таблица трассировки
+            sb.AppendLine("ТАБЛИЦА ТРАССИРОВКИ");
+            sb.AppendLine("№\tБлок/Код\tПеременная\tСтарое значение\tНовое значение\tКомментарий");
+            sb.AppendLine(separator);
+
+            foreach (var entry in traceLog)
+            {
+                string blockInfo = $"{entry.BlockType} ({entry.BlockCode})";
+                string oldVal = entry.OldValue.ToString("0.###");
+                string newVal = entry.NewValue.ToString("0.###");
+
+                // Используем символ табуляции для разделения столбцов
+                sb.AppendLine($"{entry.Step}\t{blockInfo}\t{entry.Variable}\t{oldVal}\t{newVal}\t{entry.Comment}");
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Копирует сгенерированный отчет в буфер обмена.
+        /// </summary>
+        private void CopyTraceReportToClipboard()
+        {
+            var reportText = GenerateTraceReportText();
+            var dataPackage = new DataPackage();
+            dataPackage.SetText(reportText);
+            Clipboard.SetContent(dataPackage);
+            ShowNotification("Успешно скопированно!");
+        }
 
         public Tree GetSyntaxTree() => syntaxTreeRoot;
         private async void About_Click(object sender, RoutedEventArgs e)
         {
-            // Получаем версию приложения
+  
             string version = GetAppVersion();
 
             var dialog = new ContentDialog
@@ -132,7 +194,10 @@ namespace Blocks_
             editItem.Click += (s, e) =>
             {
                 if (blockControl.Tag is BlockItem block)
+                {
                     _ = ShowEditDialogForBlock(block);
+                   
+                }
             };
 
             var info = new MenuFlyoutItem
@@ -147,6 +212,8 @@ namespace Blocks_
             menu.Items.Add(deleteItem);
 
             blockControl.ContextFlyout = menu;
+
+           
         }
 
         private void ShowBlockInfo(BlockItem block)
@@ -167,12 +234,52 @@ namespace Blocks_
             this.Close();
         }
 
+        /// <summary>
+        /// Централизованный метод для полной очистки блок-схемы
+        /// </summary>
+        private void ClearFlowchart()
+        {
+            this.connectionLines.Clear();
+            this.listofblocks.Clear();
+
+            var linesToRemove = FlowchartCanvas.Children.OfType<Polyline>().ToList();
+            foreach (var line in linesToRemove)
+                FlowchartCanvas.Children.Remove(line);
+
+            var arrowsToRemove = FlowchartCanvas.Children.OfType<Polygon>().ToList();
+            foreach (var arrow in arrowsToRemove)
+                FlowchartCanvas.Children.Remove(arrow);
+
+            var labelsToRemove = BlocksCanvas.Children.OfType<TextBlock>().ToList();
+            foreach (var label in labelsToRemove)
+                BlocksCanvas.Children.Remove(label);
+
+            BlocksCanvas.Children.Clear();
+            ClearVariablePreviewPanels();
+
+            startBlock = null;
+            endBlock = null;
+
+            isDebugging = false;
+            currentDebugNode = null;
+            currentStepIndex = -1;
+            executionOrder.Clear();
+
+            ClearBlockHighlights();
+
+            if (undoStack != null) undoStack.Clear();
+            if (redoStack != null) redoStack.Clear();
+        }
+
+        /// <summary>
+        /// Создание новой блок-схемы с подтверждением
+        /// </summary>
         private async void NewFlowchart_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new ContentDialog
             {
                 Title = "Новая блок-схема",
-                Content = "Создать новую блок-схему?",
+                Content = "Создать новую блок-схему? Все несохраненные изменения будут утеряны.",
                 PrimaryButtonText = "Создать",
                 CloseButtonText = "Отмена",
                 XamlRoot = this.Content.XamlRoot
@@ -181,14 +288,15 @@ namespace Blocks_
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
             {
+                ClearFlowchart();
+
                 blockCounter = 0;
-                BlocksCanvas.Children.Clear();
-                listofblocks.Clear();
-                ClearConnectionLines();
                 InitializeVirtualGrid();
-                startBlock = null;
-                endBlock = null;
                 HighlightAvailableCells();
+                if (TraceTextBlock != null)
+                    TraceTextBlock.Text = string.Empty;
+
+                ShowNotification("Создана новая блок-схема.");
             }
         }
 
@@ -244,7 +352,7 @@ namespace Blocks_
                 var dialog = new ContentDialog
                 {
                     Title = $"Информация о блоке: {block.Name}",
-                    Content = block.Description,
+                    Content = $"{block.Description}\n{block.Docs}",
                     PrimaryButtonText = "OK",
                     XamlRoot = this.Content.XamlRoot
                 };
@@ -253,21 +361,24 @@ namespace Blocks_
             }
         }
 
-
-        public void AddBlock(string name, string icon, string description, BlockType type)
+        public void AddBlock(string name, string icon, string description, BlockType type, string docs = null, string shot = null)
         {
-            Blocks.Add(new BlockItem
+            var block = new BlockItem
             {
                 Name = name,
                 Icon = icon,
+                Shot = shot,
                 Description = description,
+                Docs = docs,
                 Type = type
-            });
-        }
+            };
+            
+            System.Diagnostics.Debug.WriteLine($"Adding block: {name}, Docs={docs ?? "NULL"}, Shot={shot ?? "NULL"}");
 
+            Blocks.Add(block);
+        }
         /// <summary>
         /// Вызывается при двойном клике на блоке. Показывает соответствующий диалог редактирования.
-        /// Обновите существующий метод или добавьте эту логику в BlockControl_DoubleTapped.
         /// </summary>
         public async Task ShowEditDialogForBlock(BlockItem block)
         {
@@ -291,14 +402,13 @@ namespace Blocks_
                 case BlockType.Output:
                 case BlockType.VariableDeclaration:
                 case BlockType.ArrayDeclaration:
-                    // Используем существующий EditWindow.Show() для этих типов
                     EditWindow.Show(block);
                     break;
 
                 case BlockType.Start:
                 case BlockType.End:
                 case BlockType.LoopConnector:
-                    // Эти блоки не редактируются
+                case BlockType.DoLoopConnector:
                     ShowNotification($"Блок '{block.Name}' не может быть отредактирован.");
                     break;
 
@@ -306,6 +416,7 @@ namespace Blocks_
                     EditWindow.Show(block);
                     break;
             }
+            UpdateBlockVisual(block);
         }
 
         private void StartDebug_Click(object sender, RoutedEventArgs e)
@@ -343,6 +454,8 @@ namespace Blocks_
 
             HighlightCurrentBlock(currentDebugNode.Block);
 
+            BlocksCanvas.Focus(FocusState.Keyboard);
+
         }
 
         private void StopDebug_Click(object sender, RoutedEventArgs e)
@@ -374,7 +487,7 @@ namespace Blocks_
                 currentStepIndex = -1;
                 executionOrder.Clear();
                 TraceTextBlock.Text += "\nОтладка остановлена.";
-
+                ShowTraceResults();
                 ClearBlockHighlights();
                 return;
             }
@@ -402,37 +515,32 @@ namespace Blocks_
                         break;
                     }
 
-
-
                 case BlockType.Loop:
                 case BlockType.For:
                 case BlockType.While:
                 case BlockType.DoWhile:
                     {
-                        ConnectionType branch = result switch
-                        {
-                            true => ConnectionType.LoopBody,
-                            false => ConnectionType.LoopExit
-                        };
-
-                        next = currentDebugNode.Children
-                            .FirstOrDefault(c => c.BranchType == branch);
+                        ConnectionType branch = result ? ConnectionType.TrueBranch : ConnectionType.FalseBranch;
+                        next = currentDebugNode.Children.FirstOrDefault(c => c.BranchType == branch);
                         break;
                     }
 
                 case BlockType.LoopConnector:
+                case BlockType.DoLoopConnector:
                     {
-                        // Находим родительский блок цикла
-                        var parent = currentDebugNode.Parent;
-                        if (parent != null && (parent.Block.Type == BlockType.While || parent.Block.Type == BlockType.DoWhile || parent.Block.Type == BlockType.For))
+                        var outgoingConnection = connectionLines
+                            .FirstOrDefault(c => c.FromBlock == currentDebugNode.Block);
+
+                        if (outgoingConnection != null)
                         {
-                            next = parent; // Возврат к условию цикла или FOR-блоку
-                        }
-                        else
-                        {
-                            // Если это обычный LoopConnector без цикла, берём LoopBody
-                            next = currentDebugNode.Children
-                                .FirstOrDefault(c => c.BranchType == ConnectionType.LoopBody);
+                            BlockItem targetBlock = outgoingConnection.ToBlock;
+
+                            next = executionOrder.FirstOrDefault(t => t.Block == targetBlock);
+
+                            if (next == null)
+                            {
+                                ShowNotification("Ошибка: Не найден оригинальный узел цикла в истории.");
+                            }
                         }
                         break;
                     }
@@ -445,15 +553,9 @@ namespace Blocks_
                     next = currentDebugNode.Children
                         .FirstOrDefault(c => c.BranchType == ConnectionType.Normal);
                     break;
-            }
-
-            // 2. Вставляем следующий узел в последовательность выполнения
+        }
             if (next != null)
-            {
                 executionOrder.Insert(currentStepIndex + 1, next);
-            }
-
-            // 3. Переход к следующему шагу
             currentStepIndex++;
         }
 
@@ -464,6 +566,97 @@ namespace Blocks_
             if (blocksList != null)
             {
                 blocksList.DragItemsStarting += BlocksList_DragItemsStarting;
+            }
+        }
+
+
+        /// <summary>
+        /// Обновляет визуальное представление блока после изменения
+        /// </summary>
+        private void UpdateBlockVisual(BlockItem block)
+        {
+            var border = BlocksCanvas.Children.OfType<Border>()
+                .FirstOrDefault(b => b.Tag == block);
+
+            if (border != null)
+            {
+                var newBorder = DrawBlock.GetBlock(block);
+                newBorder.Tag = block;
+
+                newBorder.PointerPressed += BlockControl_PointerPressed;
+                newBorder.PointerReleased += BlockControl_PointerReleased;
+                newBorder.DoubleTapped += BlockControl_DoubleTapped;
+                AttachAnchorHandlers(newBorder);
+                InitializeBlockContextMenu(newBorder);
+
+                Canvas.SetLeft(newBorder, block.CanvasLeft);
+                Canvas.SetTop(newBorder, block.CanvasTop);
+
+                int index = BlocksCanvas.Children.IndexOf(border);
+                BlocksCanvas.Children.Remove(border);
+                BlocksCanvas.Children.Insert(index, newBorder);
+
+                UpdateConnectionLines(block);
+            }
+        }
+
+        private void InitializeVirtualGrid()
+        {
+            virtualGrid = new GridNode[GRID_ROWS, GRID_COLUMNS];
+            for (int r = 0; r < GRID_ROWS; r++)
+                for (int c = 0; c < GRID_COLUMNS; c++)
+                    virtualGrid[r, c] = new GridNode { Row = r, Column = c };
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            if (settingsWindow == null || settingsWindow.AppWindow == null)
+            {
+                settingsWindow = new SettingsWindow();
+
+                settingsWindow.SettingsChanged += (s, args) =>
+                {
+                    ApplySettings();
+                };
+
+                settingsWindow.Closed += (s, args) => settingsWindow = null;
+            }
+
+            settingsWindow.Activate();
+        }
+
+        private void ApplySettings()
+        {
+            ApplyTheme();
+
+            if (SettingsWindow.AppSettings.ShowGrid)
+                DrawGrid(20);
+            else
+                GridCanvas.Children.Clear();
+
+            highlightRadius = SettingsWindow.AppSettings.HighlightRadius;
+            HighlightAvailableCells();
+            RecalculateBlockPositions();
+            UpdateAutoSaveTimer();
+            ShowNotification("Настройки применены успешно!");
+        }
+        private void UpdateAutoSaveTimer()
+        {
+            if (autoSaveTimer != null)
+            {
+                autoSaveTimer.Stop();
+                autoSaveTimer = null;
+            }
+
+            if (SettingsWindow.AppSettings.AutoSave)
+            {
+                autoSaveTimer = new DispatcherTimer();
+                autoSaveTimer.Interval = TimeSpan.FromMinutes(SettingsWindow.AppSettings.AutoSaveInterval);
+                autoSaveTimer.Tick += (s, e) =>
+                {
+                    AutoSaveFlowchart();
+                };
+                autoSaveTimer.Start();
             }
         }
     }

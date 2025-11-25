@@ -17,9 +17,8 @@ namespace Blocks_
         {
             SaveState();
 
-            // 1. Вычисляем координаты сетки для блока условия (ромб)
-            int loopCol = (int)Math.Round(startX / (double)GRID_STEP);
-            int loopRow = (int)Math.Round(startY / (double)GRID_STEP);
+            int loopCol = (int)Math.Round(startX / (double)SettingsWindow.AppSettings.GridStep);
+            int loopRow = (int)Math.Round(startY / (double)SettingsWindow.AppSettings.GridStep);
 
             loopRow = Math.Max(0, Math.Min(GRID_ROWS - 1, loopRow));
             loopCol = Math.Max(0, Math.Min(GRID_COLUMNS - 1, loopCol));
@@ -36,9 +35,8 @@ namespace Blocks_
                 }
             }
 
-            // 2. Определяем ячейку для соединителя (тело) - справа от условия
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row - 2;
 
             if (connectorCol >= GRID_COLUMNS)
             {
@@ -66,8 +64,8 @@ namespace Blocks_
                 Name = $"Делай {blockCounter}",
                 Description = "Цикл с постусловием 'DO-WHILE'",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
@@ -86,16 +84,15 @@ namespace Blocks_
             Canvas.SetTop(loopBorder, loopBlock.CanvasTop);
             BlocksCanvas.Children.Add(loopBorder);
 
-            // 4. Создаем блок соединителя (тело цикла)
             var connectorBlock = new BlockItem
             {
-                Type = BlockType.LoopConnector,
-                Name = $"CONN{blockCounter}",
+                Type = BlockType.DoLoopConnector,
+                Name = $"",
                 Description = "Тело цикла",
                 Code = "",
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 
@@ -115,7 +112,7 @@ namespace Blocks_
             BlocksCanvas.Children.Add(connectorBorder);
 
             CreateManualConnection(connectorBlock, loopBlock, ConnectionType.Normal);
-            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.TrueBranch);
+            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.LoopBody);
 
             HighlightAvailableCells();
             BuildSyntaxTree();
@@ -137,8 +134,8 @@ namespace Blocks_
                 return;
             }
 
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row - 2;
 
             if (connectorCol >= GRID_COLUMNS)
             {
@@ -188,13 +185,13 @@ namespace Blocks_
 
             var connectorBlock = new BlockItem
             {
-                Type = BlockType.LoopConnector,
-                Name = $"CONN{blockCounter}",
+                Type = BlockType.DoLoopConnector,
+                Name = $"",
                 Description = "Тело цикла",
 
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 
@@ -214,7 +211,7 @@ namespace Blocks_
             BlocksCanvas.Children.Add(connectorBorder);
 
             CreateManualConnection(connectorBlock, loopBlock, ConnectionType.Normal);
-            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.TrueBranch);
+            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.LoopBody);
 
             HighlightAvailableCells();
             BuildSyntaxTree();

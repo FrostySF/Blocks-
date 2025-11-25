@@ -12,14 +12,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.Foundation;
+using Windows.Storage;
 using Windows.UI;
 
 namespace Blocks_
 {
     public sealed partial class MainWindow : Window
-    {  
+    {
+        private SettingsWindow settingsWindow;
+       
+
         public MainWindow()
         {
+            ApplyTheme();
             InitializeComponent();
             InitializeBlocks();
 
@@ -38,9 +43,6 @@ namespace Blocks_
             this.AppWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             this.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
             this.AppWindow.TitleBar.ButtonForegroundColor = Colors.White;
-            this.AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.White;
-            this.AppWindow.SetTitleBarIcon(@"Assets/icon.png");
-            this.AppWindow.SetTaskbarIcon(@"Assets/icon.icon");
             this.AppWindow.TitleBar.ButtonHoverBackgroundColor = Color.FromArgb(20, 255, 255, 255);
             this.AppWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(30, 255, 255, 255);
 
@@ -60,38 +62,206 @@ namespace Blocks_
 
             InitializeVirtualGrid();
             EditWindow.Content = this.Content;
+
+            InitializeAutoSave();
         }
 
-        private void InitializeVirtualGrid()
+        private void RecalculateBlockPositions()
         {
-            virtualGrid = new GridNode[GRID_ROWS, GRID_COLUMNS];
-            for (int r = 0; r < GRID_ROWS; r++)
-            {
-                for (int c = 0; c < GRID_COLUMNS; c++)
+            int newGridStep = SettingsWindow.AppSettings.GridStep;
+
+            foreach (var block in listofblocks)
+                if (block.GridPosition != null)
                 {
-                    virtualGrid[r, c] = new GridNode { Row = r, Column = c };
+                    block.CanvasLeft = block.GridPosition.Column * newGridStep;
+                    block.CanvasTop = block.GridPosition.Row * newGridStep;
+
+                    var border = BlocksCanvas.Children.OfType<Border>().FirstOrDefault(b => b.Tag == block);
+                    if (border != null)
+                    {
+                        Canvas.SetLeft(border, block.CanvasLeft);
+                        Canvas.SetTop(border, block.CanvasTop);
+                    }
+                }
+
+            foreach (var block in listofblocks)
+                UpdateConnectionLines(block);
+        }
+
+        private void InitializeAutoSave()
+        {
+            if (SettingsWindow.AppSettings.AutoSave)
+            {
+                autoSaveTimer = new DispatcherTimer();
+                autoSaveTimer.Interval = TimeSpan.FromMinutes(SettingsWindow.AppSettings.AutoSaveInterval);
+                autoSaveTimer.Tick += (s, e) =>
+                {
+                    AutoSaveFlowchart();
+                };
+                autoSaveTimer.Start();
+            }
+        }
+
+        private async void AutoSaveFlowchart()
+        {
+            try
+            {
+                var folder = ApplicationData.Current.LocalFolder;
+                var file = await folder.CreateFileAsync("autosave.prg", CreationCollisionOption.ReplaceExisting);
+
+                ShowNotification("Автосохранение выполнено");
+            }
+            catch (Exception ex)
+            {
+                ShowNotification($"Ошибка автосохранения: {ex.Message}");
+            }
+        }
+
+        private void InitializeBlocks()
+        {
+            AddBlock("Начало", "\xE80F", "Начальный блок схемы", BlockType.Start, "", "");
+            AddBlock("Конец", "\xE8BB", "Конечный блок схемы", BlockType.End, "", "");
+            AddBlock("Присваивание", "\xE909", "Блок для обработки данных", BlockType.Process,
+                "Присваивание\n<Элемент переменной> = <Арифметическое выражение>\n<Элемент таблицы> = <Арифметическое выражение>",
+                "Введите арифметическое выражение:");
+            AddBlock("Описание", "\xE909", "Описание переменных", BlockType.VariableDeclaration,
+                "Описание переменных\n<Тип данных> <Имя переменной>\nПримеры: int x; double y; string text;",
+                "Введите описание переменных:");
+            AddBlock("Решение", "\xE7EC", "Блок условного оператора", BlockType.Decision,
+                "Решение\n<Логическое выражение>\nПримеры: x > 0; a == b; (x > 5) && (y < 10)",
+                "Введите логическое выражение:");
+            AddBlock("Массивы", "\xE8FD", "Объявление векторов и матриц", BlockType.ArrayDeclaration,
+                "Массивы\nВектор: <Тип> <Имя>[<Размер>]\nМатрица: <Тип> <Имя>[<Строки>][<Столбцы>]\nПримеры: int arr[10]; double matrix[5][5]",
+                "Введите объявление массива:");
+            AddBlock("Пока", "\xE895", "Цикл с предусловием (while)", BlockType.While,
+                "Пока\n<Логическое выражение>\nВыполняется пока условие истинно\nПримеры: i < 10; x != 0",
+                "Введите логическое выражение:");
+            AddBlock("Делай", "\xE895", "Цикл с постусловием (do-while)", BlockType.DoWhile,
+                "Делай-Пока\n<Логическое выражение>\nВыполняется до тех пор, пока условие истинно\nПримеры: choice != 0; continue == true",
+                "Введите логическое выражение:");
+            AddBlock("Подготовка", "\xE895", "Цикл со счётчиком (for)", BlockType.For,
+                "Подготовка (for)\n<Переменная> от <Начальное значение> до <Конечное значение> шаг <Приращение>\nПримеры: i от 1 до 10 шаг 1; x от 0 до 100 шаг 5",
+                "Введите параметры цикла:");
+            AddBlock("Ввод", "\xE8A5", "Блок ввода данных", BlockType.Input,
+                "Ввод\n<Список переменных через запятую>\nПримеры: x, y, z; name, age",
+                "Введите список ввода:");
+            AddBlock("Вывод", "\xE8A5", "Блок вывода данных", BlockType.Output,
+                "Вывод\n<Список выражений через запятую>\nПримеры: x, y; \"Результат:\", result; a + b",
+                "Введите список вывода:");
+            SetupBlockDragAndDrop();
+        }
+
+        #region Split Panel Handlers
+
+        private void LeftSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            isLeftSplitterDragging = true;
+            splitterStartX = e.GetCurrentPoint(this.Content as UIElement).Position.X;
+            ((Border)sender).CapturePointer(e.Pointer);
+            e.Handled = true;
+        }
+
+        private void LeftSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            if (isLeftSplitterDragging)
+            {
+                var currentX = e.GetCurrentPoint(this.Content as UIElement).Position.X;
+                var delta = currentX - splitterStartX;
+
+                var splitterBorder = (Border)sender;
+                var parentGrid = splitterBorder.Parent as Grid;
+
+                if (parentGrid != null)
+                {
+                    var leftColumn = parentGrid.ColumnDefinitions[0];
+                    var newWidth = leftColumn.Width.Value + delta;
+
+                    if (newWidth >= 150 && newWidth <= 400)
+                    {
+                        leftColumn.Width = new GridLength(newWidth);
+                        splitterStartX = currentX;
+                    }
                 }
             }
         }
-        private void InitializeBlocks()
-        {
-            AddBlock("Начало", "\xE80F", "Начальный блок схемы", BlockType.Start);
-            AddBlock("Конец", "\xE8BB", "Конечный блок схемы", BlockType.End);
-            AddBlock("Процесс", "\xE909", "Блок обработки данных\n[имя переменной] = [вырожение]", BlockType.Process);
-            AddBlock("Описание переменных", "\xE909", "Описание переменных", BlockType.VariableDeclaration);
-            AddBlock("Решение", "\xE7EC", "Условный блок (if)", BlockType.Decision);
-            AddBlock("Массивы", "\xE8FD", "Объявление векторов и матриц", BlockType.ArrayDeclaration);
 
-            //AddBlock("Цикл", "\xE895", "Блок цикла (for/while)", BlockType.Loop);
-            AddBlock("Пока", "\xE895", "Блок цикла (while)", BlockType.While);
-            AddBlock("Делай", "\xE895", "Блок цикла (DoWhile)", BlockType.DoWhile);
-            AddBlock("Подготовка", "\xE895", "Блок цикла (for)", BlockType.For);
-            //AddBlock("circle", "\xE895", "Блок цикла (while)", BlockType.LoopConnector);
-            //AddBlock("Ввод/Вывод", "\xE8A5", "Блок ввода/вывода", BlockType.InputOutput);
-            AddBlock("Ввод", "\xE8A5", "Блок ввода", BlockType.Input);
-            AddBlock("Вывод", "\xE8A5", "Блок вывода", BlockType.Output);
-            SetupBlockDragAndDrop();
+        private void LeftSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            isLeftSplitterDragging = false;
+            ((Border)sender).ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
         }
+
+        private void RightSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            isRightSplitterDragging = true;
+            splitterStartX = e.GetCurrentPoint(this.Content as UIElement).Position.X;
+            ((Border)sender).CapturePointer(e.Pointer);
+            e.Handled = true;
+        }
+
+        private void RightSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            if (isRightSplitterDragging)
+            {
+                var currentX = e.GetCurrentPoint(this.Content as UIElement).Position.X;
+                var delta = splitterStartX - currentX;
+
+                var splitterBorder = (Border)sender;
+                var parentGrid = splitterBorder.Parent as Grid;
+
+                if (parentGrid != null)
+                {
+                    var rightColumn = parentGrid.ColumnDefinitions[4];
+                    var newWidth = rightColumn.Width.Value + delta;
+
+                    if (newWidth >= 150 && newWidth <= 400)
+                    {
+                        rightColumn.Width = new GridLength(newWidth);
+                        splitterStartX = currentX;
+                    }
+                }
+            }
+        }
+
+        private void RightSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            isRightSplitterDragging = false;
+            ((Border)sender).ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+        }
+
+        private void Splitter_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is Border border)
+            {
+                // Устанавливаем курсор изменения размера
+                //border.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
+
+                // Подсвечиваем разделитель
+                if (border.Child is Rectangle rect)
+                {
+                    rect.Fill = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
+                }
+            }
+        }
+
+        private void Splitter_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is Border border)
+            {
+                // Возвращаем обычный курсор
+                //border.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+
+                // Убираем подсветку
+                if (border.Child is Rectangle rect && !isLeftSplitterDragging && !isRightSplitterDragging)
+                {
+                    rect.Fill = new SolidColorBrush(Color.FromArgb(32, 255, 255, 255));
+                }
+            }
+        }
+
+        #endregion
 
         private void BlocksList_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
         {
@@ -107,9 +277,7 @@ namespace Blocks_
         private void BlockButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is BlockItem block)
-            {
                 CreateBlockOnCanvas(block);
-            }
         }
 
         private void CreateBlockOnCanvas(BlockItem templateBlock)
@@ -117,9 +285,7 @@ namespace Blocks_
             SaveState();
 
             if (templateBlock.Type == BlockType.While)
-            {
                 CreateWhileLoopStructureInViewport();
-            }
             if (templateBlock.Type == BlockType.DoWhile)
             {
                 CreateDoWhileLoopStructureInViewport();
@@ -137,7 +303,7 @@ namespace Blocks_
                 bool endExists = listofblocks.Any(b => b.Type == BlockType.End);
                 if (startExists && endExists)
                 {
-                    ShowNotification("Блоки Start и End уже существуют.");
+                    ShowNotification("Блоки Начало и Конец уже существуют.");
                     return;
                 }
                 if (!startExists && !endExists)
@@ -222,20 +388,7 @@ namespace Blocks_
                     .ToList();
 
                 foreach (var line in linesToRemove)
-                {
-                    FlowchartCanvas.Children.Remove(line.VisualLine);
-                    var arrows = FlowchartCanvas.Children.OfType<Polygon>()
-                        .Where(p => Math.Abs(p.Points[0].X - line.VisualLine.X2) < 5 &&
-                                   Math.Abs(p.Points[0].Y - line.VisualLine.Y2) < 5)
-                        .ToList();
-                    foreach (var arrow in arrows)
-                    {
-                        FlowchartCanvas.Children.Remove(arrow);
-                    }
-
-                    connectionLines.Remove(line);
-                }
-
+                    RemoveConnection(line);
                 BuildSyntaxTree();
                 e.Handled = true;
             }
@@ -245,9 +398,8 @@ namespace Blocks_
         private void AttachAnchorHandlers(Border blockBorder)
         {
             if (blockBorder.Child is Grid grid)
-            {
+
                 foreach (var child in grid.Children)
-                {
                     if (child is Border hitBox && hitBox.Child is Ellipse anchor)
                     {
 
@@ -257,8 +409,6 @@ namespace Blocks_
                         hitBox.RightTapped += Anchor_RightTapped;
                         hitBox.PointerExited += Anchor_PointerExited;
                     }
-                }
-            }
         }
 
         private void HitBox_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -408,7 +558,6 @@ namespace Blocks_
                 BuildTreeRecursive(childNode, conn.ToBlock, visited);
             }
         }
-
         private void Polyline_RightTapped(object sender, RightTappedRoutedEventArgs e)
         {
             if (sender is Polyline polyline)
@@ -416,32 +565,12 @@ namespace Blocks_
                 var connection = connectionLines.FirstOrDefault(cl => cl.VisualPath == polyline);
                 if (connection != null)
                 {
-                    FlowchartCanvas.Children.Remove(polyline);
-                    if (connection.ArrowHead != null)
-                        FlowchartCanvas.Children.Remove(connection.ArrowHead);
-
-                    connectionLines.Remove(connection);
+                    RemoveConnection(connection);
                     BuildSyntaxTree();
                 }
 
                 e.Handled = true;
             }
-        }
-
-        private void ClearConnectionLines()
-        {
-            foreach (var connection in connectionLines)
-            {
-                FlowchartCanvas.Children.Remove(connection.VisualLine);
-            }
-
-            var arrows = FlowchartCanvas.Children.OfType<Polygon>().ToList();
-            foreach (var arrow in arrows)
-            {
-                FlowchartCanvas.Children.Remove(arrow);
-            }
-
-            connectionLines.Clear();
         }
 
         private void BlockControl_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -487,18 +616,9 @@ namespace Blocks_
                     if (lineToInsertInto != null) break;
                 }
 
-                if (lineToInsertInto != null)
-                {
-                    connectionLines.Remove(lineToInsertInto);
-                    FlowchartCanvas.Children.Remove(lineToInsertInto.VisualPath);
-                    if (lineToInsertInto.ArrowHead != null) FlowchartCanvas.Children.Remove(lineToInsertInto.ArrowHead);
-                    CreateManualConnection(lineToInsertInto.FromBlock, selectedBlock, lineToInsertInto.Type);
-                    CreateManualConnection(selectedBlock, lineToInsertInto.ToBlock, ConnectionType.Normal);
-                }
 
-
-                int col = (int)Math.Round(selectedBlock.CanvasLeft / (double)GRID_STEP);
-                int row = (int)Math.Round(selectedBlock.CanvasTop / (double)GRID_STEP);
+                int col = (int)Math.Round(selectedBlock.CanvasLeft / (double)SettingsWindow.AppSettings.GridStep);
+                int row = (int)Math.Round(selectedBlock.CanvasTop / (double)SettingsWindow.AppSettings.GridStep);
 
                 row = Math.Max(0, Math.Min(GRID_ROWS - 1, row));
                 col = Math.Max(0, Math.Min(GRID_COLUMNS - 1, col));
@@ -510,42 +630,33 @@ namespace Blocks_
 
                 if (desiredNode.IsAvailable)
                 {
-                    selectedBlock.CanvasLeft = desiredNode.Column * GRID_STEP;
-                    selectedBlock.CanvasTop = desiredNode.Row * GRID_STEP;
+                    selectedBlock.CanvasLeft = desiredNode.Column * SettingsWindow.AppSettings.GridStep;
+                    selectedBlock.CanvasTop = desiredNode.Row * SettingsWindow.AppSettings.GridStep;
 
                     if (!CheckCollisionAtTemporaryLocation(selectedBlock))
-                    {
                         finalNode = desiredNode;
-                    }
                 }
 
                 if (finalNode == null)
-                {
                     finalNode = FindNearestFreeNodeWithoutCollisions(selectedBlock, row, col);
-                }
-
 
                 if (finalNode != null)
                 {
                     if (selectedBlock.GridPosition != null)
-                    {
                         selectedBlock.GridPosition.OccupiedBy = null;
-                    }
 
                     finalNode.OccupiedBy = selectedBlock;
                     selectedBlock.GridPosition = finalNode;
-                    selectedBlock.CanvasLeft = finalNode.Column * GRID_STEP;
-                    selectedBlock.CanvasTop = finalNode.Row * GRID_STEP;
+                    selectedBlock.CanvasLeft = finalNode.Column * SettingsWindow.AppSettings.GridStep;
+                    selectedBlock.CanvasTop = finalNode.Row * SettingsWindow.AppSettings.GridStep;
 
                     foreach (var child in BlocksCanvas.Children)
-                    {
                         if (child is Border _border && _border.Tag == selectedBlock)
                         {
                             Canvas.SetLeft(_border, selectedBlock.CanvasLeft);
                             Canvas.SetTop(_border, selectedBlock.CanvasTop);
                             break;
                         }
-                    }
                 }
 
                 UpdateConnectionLines(selectedBlock);
@@ -555,9 +666,7 @@ namespace Blocks_
             selectedBlock = null;
 
             if (sender is Border border)
-            {
                 border.ReleasePointerCapture(e.Pointer);
-            }
             e.Handled = true;
         }
 
@@ -567,6 +676,7 @@ namespace Blocks_
                 block.Type != BlockType.Start && block.Type != BlockType.End)
             {
                 _ = ShowEditDialogForBlock(block);
+                UpdateBlockVisual(block);
             }
             e.Handled = true;
         }
@@ -596,7 +706,32 @@ namespace Blocks_
                 return;
             }
 
-            if (selectedBlock != null && e.Pointer.IsInContact)
+            if (isDraggingSelection && selectedBlocks.Count > 0 && e.Pointer.IsInContact)
+            {
+                var currentPosition = e.GetCurrentPoint(FlowchartCanvas).Position;
+                var deltaX = currentPosition.X - lastMousePosition.X;
+                var deltaY = currentPosition.Y - lastMousePosition.Y;
+                foreach (var block in selectedBlocks)
+                {
+                    block.CanvasLeft += deltaX;
+                    block.CanvasTop += deltaY;
+
+                    var border = BlocksCanvas.Children.OfType<Border>().FirstOrDefault(b => b.Tag == block);
+                    if (border != null)
+                    {
+                        Canvas.SetLeft(border, SnapToGrid(block.CanvasLeft));
+                        Canvas.SetTop(border, SnapToGrid(block.CanvasTop));
+                    }
+
+                    UpdateConnectionLines(block);
+                }
+
+                lastMousePosition = currentPosition;
+                e.Handled = true;
+                return;
+            }
+
+            if (selectedBlock != null && e.Pointer.IsInContact && !isDraggingSelection)
             {
                 var currentPosition = e.GetCurrentPoint(FlowchartCanvas).Position;
                 var deltaX = currentPosition.X - lastMousePosition.X;
@@ -606,14 +741,12 @@ namespace Blocks_
                 selectedBlock.CanvasTop += deltaY;
 
                 foreach (var child in BlocksCanvas.Children)
-                {
                     if (child is Border border && border.Tag == selectedBlock)
                     {
                         Canvas.SetLeft(border, SnapToGrid(selectedBlock.CanvasLeft));
                         Canvas.SetTop(border, SnapToGrid(selectedBlock.CanvasTop));
                         break;
                     }
-                }
 
                 UpdateConnectionLines(selectedBlock);
                 lastMousePosition = currentPosition;
@@ -628,6 +761,7 @@ namespace Blocks_
                 FlowchartCanvas.ReleasePointerCapture(e.Pointer);
                 isPanning = false;
             }
+
             if (previewLine != null)
             {
                 FlowchartCanvas.Children.Remove(previewLine);
@@ -635,9 +769,12 @@ namespace Blocks_
                 selectedAnchor = null;
                 connectionStartBlock = null;
             }
+
+            isDraggingSelection = false;
             selectedBlock = null;
+            clickedBlock = null;
         }
- 
+
         private void HighlightCurrentBlock(BlockItem block)
         {
             ClearBlockHighlights();
@@ -707,6 +844,38 @@ namespace Blocks_
             }
 
             highlightedBorder = null;
+        }
+        private void ApplyTheme()
+        {
+            string theme = SettingsWindow.AppSettings.Theme;
+            string accentColor = SettingsWindow.AppSettings.AccentColor;
+
+            var elementTheme = theme switch
+            {
+                "Dark" => ElementTheme.Dark,
+                "Light" => ElementTheme.Light,
+                _ => ElementTheme.Default
+            };
+
+            if (this.Content is FrameworkElement rootElement)
+                rootElement.RequestedTheme = elementTheme;
+
+            Color color = accentColor switch
+            {
+                "Blue" => Color.FromArgb(255, 0, 120, 215),
+                "Green" => Color.FromArgb(255, 16, 124, 16),
+                "Purple" => Color.FromArgb(255, 136, 23, 152),
+                "Red" => Color.FromArgb(255, 232, 17, 35),
+                "Orange" => Color.FromArgb(255, 247, 99, 12),
+                _ => Color.FromArgb(255, 0, 120, 215)
+            };
+
+            try
+            {
+                if (Application.Current.Resources.ContainsKey("SystemAccentColor"))
+                    Application.Current.Resources["SystemAccentColor"] = color;
+            }
+            catch { }
         }
     }
 }

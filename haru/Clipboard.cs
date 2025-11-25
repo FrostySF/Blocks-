@@ -14,52 +14,8 @@ using Windows.UI;
 
 namespace Blocks_
 {
-    public class FlowchartState
-    {
-        public List<BlockItem> Blocks { get; set; }
-        public List<ConnectionLine> Connections { get; set; }
-        public int BlockCounter { get; set; }
-
-        public FlowchartState Clone()
-        {
-            return new FlowchartState
-            {
-                Blocks = Blocks.Select(b => new BlockItem
-                {
-                    Id = b.Id,
-                    Name = b.Name,
-                    Icon = b.Icon,
-                    Description = b.Description,
-                    Type = b.Type,
-                    Code = b.Code,
-                    CanvasLeft = b.CanvasLeft,
-                    CanvasTop = b.CanvasTop,
-                    GridPosition = b.GridPosition
-                }).ToList(),
-                Connections = Connections.Select(c => new ConnectionLine
-                {
-                    FromBlock = c.FromBlock,
-                    ToBlock = c.ToBlock,
-                    Type = c.Type
-                }).ToList(),
-                BlockCounter = BlockCounter
-            };
-        }
-    }
-
     public sealed partial class MainWindow : Window
     {
-        private List<BlockItem> clipboard = new List<BlockItem>();
-        private List<ConnectionLine> clipboardConnections = new List<ConnectionLine>();
-        private Stack<FlowchartState> undoStack = new Stack<FlowchartState>();
-        private Stack<FlowchartState> redoStack = new Stack<FlowchartState>();
-        private const int MAX_UNDO_STEPS = 50;
-
-        private HashSet<BlockItem> selectedBlocks = new HashSet<BlockItem>();
-        private bool isMultiSelecting = false;
-        private Point selectionStartPoint;
-        private Rectangle selectionRectangle;
-
         private void InitializeClipboardAndUndo()
         {
             SaveState();
@@ -68,18 +24,83 @@ namespace Blocks_
             {
                 root.KeyDown += CoreWindow_KeyDown_Enhanced;
             }
+
+            selectionRectangle = new Rectangle
+            {
+                Stroke = new SolidColorBrush(Colors.DeepSkyBlue),
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Color.FromArgb(40, 0, 191, 255)),
+                StrokeDashArray = new DoubleCollection { 5, 3 },
+                Visibility = Visibility.Collapsed,
+                IsHitTestVisible = false
+            };
+            FlowchartCanvas.Children.Add(selectionRectangle);
+
+            BlocksCanvas.PointerPressed += BlocksCanvas_PointerPressed;
+            BlocksCanvas.PointerMoved += BlocksCanvas_PointerMoved;
+            BlocksCanvas.PointerReleased += BlocksCanvas_PointerReleased;
         }
 
-        // Расширенный обработчик клавиш
+        private void BlocksCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            var pointerPoint = e.GetCurrentPoint(BlocksCanvas);
+
+            if (e.OriginalSource == BlocksCanvas || e.OriginalSource == sender)
+            {
+                if (pointerPoint.Properties.IsLeftButtonPressed && !IsCtrlPressed() && !isSpaceBarPressed)
+                {
+                    isMultiSelecting = true;
+                    selectionStartPoint = pointerPoint.Position;
+
+                    ClearSelection();
+
+                    selectionRectangle.Visibility = Visibility.Visible;
+                    Canvas.SetLeft(selectionRectangle, selectionStartPoint.X);
+                    Canvas.SetTop(selectionRectangle, selectionStartPoint.Y);
+                    selectionRectangle.Width = 0;
+                    selectionRectangle.Height = 0;
+
+                    BlocksCanvas.CapturePointer(e.Pointer);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void BlocksCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            if (isMultiSelecting)
+            {
+                var currentPoint = e.GetCurrentPoint(BlocksCanvas).Position;
+                UpdateSelectionRectangle(currentPoint);
+                e.Handled = true;
+            }
+        }
+
+        private void BlocksCanvas_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            if (isMultiSelecting)
+            {
+                isMultiSelecting = false;
+                selectionRectangle.Visibility = Visibility.Collapsed;
+                BlocksCanvas.ReleasePointerCapture(e.Pointer);
+
+                if (selectedBlocks.Count > 0)
+                    ShowNotification($"Выделено блоков: {selectedBlocks.Count}");
+
+                e.Handled = true;
+            }
+        }
+
         private void CoreWindow_KeyDown_Enhanced(object sender, KeyRoutedEventArgs e)
         {
-            var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-            var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            var ctrl = IsCtrlPressed();
+            var shift = IsShiftPressed();
 
             if (e.Key == Windows.System.VirtualKey.Space)
             {
                 isSpaceBarPressed = true;
                 e.Handled = true;
+                return;
             }
             if (ctrl && e.Key == Windows.System.VirtualKey.C)
             {
@@ -130,11 +151,18 @@ namespace Blocks_
                 e.Handled = true;
                 return;
             }
-            if (e.Key == Windows.System.VirtualKey.Space)
-            {
-                isSpaceBarPressed = true;
-                e.Handled = true;
-            }
+        }
+
+        private bool IsCtrlPressed()
+        {
+            return Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        }
+
+        private bool IsShiftPressed()
+        {
+            return Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
         }
 
         private void SaveState()
@@ -148,18 +176,14 @@ namespace Blocks_
 
             undoStack.Push(state.Clone());
 
-            while (undoStack.Count > MAX_UNDO_STEPS)
+            while (undoStack.Count > SettingsWindow.AppSettings.MaxUndoSteps)
             {
                 var tempStack = new Stack<FlowchartState>();
-                for (int i = 0; i < MAX_UNDO_STEPS; i++)
-                {
+                for (int i = 0; i < SettingsWindow.AppSettings.MaxUndoSteps; i++)
                     tempStack.Push(undoStack.Pop());
-                }
                 undoStack.Clear();
                 while (tempStack.Count > 0)
-                {
                     undoStack.Push(tempStack.Pop());
-                }
             }
 
             redoStack.Clear();
@@ -167,7 +191,7 @@ namespace Blocks_
 
         private void Undo()
         {
-            if (undoStack.Count <= 1) 
+            if (undoStack.Count <= 1)
             {
                 ShowNotification("Нечего отменять");
                 return;
@@ -243,7 +267,7 @@ namespace Blocks_
 
                 Border border = DrawBlock.GetBlock(block);
                 border.Tag = block;
-                border.PointerPressed += BlockControl_PointerPressed_Enhanced;
+                border.PointerPressed += BlockControl_PP;
                 border.PointerReleased += BlockControl_PointerReleased;
                 border.DoubleTapped += BlockControl_DoubleTapped;
                 AttachAnchorHandlers(border);
@@ -254,16 +278,13 @@ namespace Blocks_
                 BlocksCanvas.Children.Add(border);
             }
 
-            // Восстанавливаем соединения
             foreach (var connection in state.Connections)
             {
                 var fromBlock = listofblocks.FirstOrDefault(b => b.Id == connection.FromBlock.Id);
                 var toBlock = listofblocks.FirstOrDefault(b => b.Id == connection.ToBlock.Id);
 
                 if (fromBlock != null && toBlock != null)
-                {
                     CreateManualConnection(fromBlock, toBlock, connection.Type);
-                }
             }
 
             blockCounter = state.BlockCounter;
@@ -297,17 +318,13 @@ namespace Blocks_
             }
 
             foreach (var conn in connectionLines)
-            {
                 if (selectedBlocks.Contains(conn.FromBlock) && selectedBlocks.Contains(conn.ToBlock))
-                {
                     clipboardConnections.Add(new ConnectionLine
                     {
                         FromBlock = conn.FromBlock,
                         ToBlock = conn.ToBlock,
                         Type = conn.Type
                     });
-                }
-            }
 
             ShowNotification($"Скопировано блоков: {clipboard.Count}");
         }
@@ -338,8 +355,6 @@ namespace Blocks_
             ClearSelection();
 
             var idMapping = new Dictionary<Guid, BlockItem>();
-            double offsetX = 100;
-            double offsetY = 100;
 
             foreach (var clipboardBlock in clipboard)
             {
@@ -370,7 +385,7 @@ namespace Blocks_
 
                 Border border = DrawBlock.GetBlock(newBlock);
                 border.Tag = newBlock;
-                border.PointerPressed += BlockControl_PointerPressed_Enhanced;
+                border.PointerPressed += BlockControl_PP;
                 border.PointerReleased += BlockControl_PointerReleased;
                 border.DoubleTapped += BlockControl_DoubleTapped;
                 AttachAnchorHandlers(border);
@@ -401,15 +416,34 @@ namespace Blocks_
             ShowNotification($"Вставлено блоков: {clipboard.Count}");
         }
 
-
-        private void BlockControl_PointerPressed_Enhanced(object sender, PointerRoutedEventArgs e)
+        private void BlockControl_PP(object sender, PointerRoutedEventArgs e)
         {
             if (sender is Border border && border.Tag is BlockItem block)
             {
-                var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
-                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-                var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
-                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+                var ctrl = IsCtrlPressed();
+
+                var originalSource = e.OriginalSource;
+
+                DependencyObject parent = originalSource as DependencyObject;
+                bool isAnchorClick = false;
+
+                while (parent != null && parent != border)
+                {
+                    if (parent is Ellipse ellipse && ellipse.Name == "AnchorEllipse")
+                    {
+                        isAnchorClick = true;
+                        break;
+                    }
+                    if (parent is Border hitBox && hitBox.Tag is ValueTuple<BlockItem, ConnectionType>)
+                    {
+                        isAnchorClick = true;
+                        break;
+                    }
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+
+                if (isAnchorClick)
+                    return;
 
                 if (ctrl)
                 {
@@ -435,16 +469,20 @@ namespace Blocks_
                 }
 
                 selectedBlock = block;
+                clickedBlock = block;
+                isDraggingSelection = true;
                 lastMousePosition = e.GetCurrentPoint(FlowchartCanvas).Position;
                 border.CapturePointer(e.Pointer);
-
-                if (block.GridPosition != null)
+                foreach (var selectedBlock in selectedBlocks)
                 {
-                    virtualGrid[block.GridPosition.Row, block.GridPosition.Column].OccupiedBy = null;
-                    block.GridPosition = null;
-                    HighlightAvailableCells();
+                    if (selectedBlock.GridPosition != null)
+                    {
+                        virtualGrid[selectedBlock.GridPosition.Row, selectedBlock.GridPosition.Column].OccupiedBy = null;
+                        selectedBlock.GridPosition = null;
+                    }
                 }
 
+                HighlightAvailableCells();
                 e.Handled = true;
             }
         }
@@ -452,16 +490,12 @@ namespace Blocks_
         private void HighlightBlock(Border border, bool highlight)
         {
             if (border.Child is Grid grid)
-            {
                 foreach (var child in grid.Children)
-                {
-                    if (child is Shape shape)
+                    if (child is Shape shape && !(child is Ellipse && ((Ellipse)child).Name == "AnchorEllipse"))
                     {
                         shape.Stroke = new SolidColorBrush(highlight ? Colors.Yellow : Colors.White);
                         shape.StrokeThickness = highlight ? 3 : 2;
                     }
-                }
-            }
         }
 
         private void ClearSelection()
@@ -475,6 +509,9 @@ namespace Blocks_
                 }
             }
             selectedBlocks.Clear();
+
+            if (selectionRectangle != null)
+                selectionRectangle.Visibility = Visibility.Collapsed;
         }
 
         private void SelectAllBlocks()
@@ -485,9 +522,7 @@ namespace Blocks_
                 selectedBlocks.Add(block);
                 var border = BlocksCanvas.Children.OfType<Border>().FirstOrDefault(b => b.Tag == block);
                 if (border != null)
-                {
                     HighlightBlock(border, true);
-                }
             }
             ShowNotification($"Выделено блоков: {selectedBlocks.Count}");
         }
@@ -506,13 +541,50 @@ namespace Blocks_
             {
                 var border = BlocksCanvas.Children.OfType<Border>().FirstOrDefault(b => b.Tag == block);
                 if (border != null)
-                {
                     DeleteBlock(border);
-                }
             }
 
             selectedBlocks.Clear();
             ShowNotification("Выделенные блоки удалены");
+        }
+
+        private void UpdateSelectionRectangle(Point currentPoint)
+        {
+            if (!isMultiSelecting) return;
+
+            double left = Math.Min(selectionStartPoint.X, currentPoint.X);
+            double top = Math.Min(selectionStartPoint.Y, currentPoint.Y);
+            double width = Math.Abs(currentPoint.X - selectionStartPoint.X);
+            double height = Math.Abs(currentPoint.Y - selectionStartPoint.Y);
+
+            Canvas.SetLeft(selectionRectangle, left);
+            Canvas.SetTop(selectionRectangle, top);
+            selectionRectangle.Width = width;
+            selectionRectangle.Height = height;
+
+            Rect selectionRect = new Rect(left, top, width, height);
+
+            foreach (var block in listofblocks)
+            {
+                Rect blockRect = new Rect(block.CanvasLeft, block.CanvasTop, 100, 60);
+
+                var border = BlocksCanvas.Children.OfType<Border>().FirstOrDefault(b => b.Tag == block);
+                if (border != null)
+                {
+                    bool intersects = DoRectsIntersect(selectionRect, blockRect);
+
+                    if (intersects && !selectedBlocks.Contains(block))
+                    {
+                        selectedBlocks.Add(block);
+                        HighlightBlock(border, true);
+                    }
+                    else if (!intersects && selectedBlocks.Contains(block))
+                    {
+                        selectedBlocks.Remove(block);
+                        HighlightBlock(border, false);
+                    }
+                }
+            }
         }
 
         private void Copy_Click(object sender, RoutedEventArgs e) => CopySelectedBlocks();

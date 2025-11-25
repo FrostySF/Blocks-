@@ -6,15 +6,11 @@ using System.Text.RegularExpressions;
 
 namespace Blocks_.Core.Services
 {
-    /// <summary>
-    /// Расширенный вычислитель выражений с поддержкой массивов
-    /// </summary>
     public class ArrayExpressionEvaluator
     {
         private readonly Dictionary<string, double> variables;
         private readonly HashSet<string> declaredVariables;
 
-        // Массивы
         private readonly Dictionary<string, double[]> vectors;
         private readonly Dictionary<string, double[,]> matrices;
         private readonly HashSet<string> declaredArrays;
@@ -53,7 +49,6 @@ namespace Blocks_.Core.Services
             if (string.IsNullOrWhiteSpace(expression))
                 return 0;
 
-            // Предварительная обработка: замена индексации массивов на временные переменные
             expression = PreprocessArrayAccess(expression);
 
             var tokens = Tokenize(expression);
@@ -62,7 +57,7 @@ namespace Blocks_.Core.Services
         }
 
         /// <summary>
-        /// Предварительная обработка: arr[i] → _temp0, matrix[i][j] → _temp1
+        ///  arr[i] → temp0, matrix[i][j] → temp1
         /// </summary>
         private string PreprocessArrayAccess(string expr)
         {
@@ -77,19 +72,14 @@ namespace Blocks_.Core.Services
                 string index2Expr = match.Groups[4].Value;
 
                 if (!declaredArrays.Contains(arrayName))
-                {
-                    // Это не массив, возможно математическое выражение
                     return match.Value;
-                }
 
                 try
                 {
-                    // Вычисляем индексы БЕЗ предварительной обработки (чтобы избежать бесконечной рекурсии)
                     int index1 = (int)EvaluateSimple(index1Expr);
 
                     if (!string.IsNullOrEmpty(index2Expr))
                     {
-                        // Матрица
                         int index2 = (int)EvaluateSimple(index2Expr);
 
                         if (matrices.TryGetValue(arrayName, out var matrix))
@@ -98,30 +88,25 @@ namespace Blocks_.Core.Services
                                 index2 >= 0 && index2 < matrix.GetLength(1))
                             {
                                 double value = matrix[index1, index2];
-                                string tempVar = $"_temp{tempCounter++}";
+                                string tempVar = $"temp{tempCounter++}";
                                 variables[tempVar] = value;
                                 declaredVariables.Add(tempVar);
                                 return tempVar;
                             }
                             else
-                            {
                                 throw new IndexOutOfRangeException($"Индекс вне диапазона: {arrayName}[{index1}][{index2}]");
-                            }
                         }
                         else
-                        {
                             throw new InvalidOperationException($"Матрица '{arrayName}' не найдена");
-                        }
                     }
                     else
                     {
-                        // Вектор
                         if (vectors.TryGetValue(arrayName, out var vector))
                         {
                             if (index1 >= 0 && index1 < vector.Length)
                             {
                                 double value = vector[index1];
-                                string tempVar = $"_temp{tempCounter++}";
+                                string tempVar = $"temp{tempCounter++}";
                                 variables[tempVar] = value;
                                 declaredVariables.Add(tempVar);
                                 return tempVar;
@@ -154,15 +139,12 @@ namespace Blocks_.Core.Services
             if (string.IsNullOrWhiteSpace(expression))
                 return 0;
 
-            // Пытаемся распарсить как число
             if (double.TryParse(expression.Trim(), out double num))
                 return num;
 
-            // Если это переменная
             if (variables.TryGetValue(expression.Trim(), out double val))
                 return val;
 
-            // Иначе вычисляем как выражение
             var tokens = Tokenize(expression);
             var rpn = ToRpn(tokens);
             return EvaluateRpn(rpn);

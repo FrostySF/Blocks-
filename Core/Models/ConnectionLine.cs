@@ -27,6 +27,9 @@ namespace Blocks_.Core.Models
         private Guid _toBlockId;
 
         [XmlIgnore]
+        public List<Point> Points { get; set; }
+
+        [XmlIgnore]
         public TextBlock VisualLabel { get; set; } 
         public ConnectionLine()
         {
@@ -72,7 +75,6 @@ namespace Blocks_.Core.Models
 
         [XmlIgnore]
         public bool IsRouted => VisualPath != null;
-        [XmlIgnore]
-        public IList<Point> Points => VisualPath?.Points;
+        
     }
 }

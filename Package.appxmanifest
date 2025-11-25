@@ -11,7 +11,7 @@
   <Identity
     Name="bb3c80fe-b1e9-4d44-8e79-e26e38c26168"
     Publisher="CN=haru"
-    Version="1.0.5.0" />
+    Version="1.0.6.0" />
 
   <mp:PhoneIdentity PhoneProductId="bb3c80fe-b1e9-4d44-8e79-e26e38c26168" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

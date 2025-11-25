@@ -19,7 +19,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 	  <None Remove="Assets\Square44x44Logo.targetsize-256_altform-lightunplated.png" />
-	  <None Remove="HomePage.xaml" />
+	  <None Remove="SettingsWindow.xaml" />
 	</ItemGroup>
 	<ItemGroup>
 		<Page Remove="Resources.xaml" />
@@ -54,12 +54,15 @@
 		<PackageReference Include="System.ObjectModel" Version="4.3.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<Page Update="HomePage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
-		</Page>
 		<None Update="Resources.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</None>
+		<Page Update="SettingsWindow.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</Page>
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Core\Controls\" />
 	</ItemGroup>
 
 	<!--

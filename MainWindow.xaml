@@ -126,7 +126,7 @@
                                      HorizontalAlignment="Center"
                                      Margin="0,0,0,4"/>
 
-   
+
                                     <TextBlock Grid.Row="1"
                                       Text="{Binding Name}"
                                       Foreground="White"
@@ -139,22 +139,16 @@
                 </Setter>
             </Style>
         </Grid.Resources>
-        
-        
+
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
 
-
-        <MenuBar Grid.Row="0" Grid.ColumnSpan="3">
+        <MenuBar Grid.Row="0">
             <MenuBarItem Title="Файл">
                 <MenuFlyoutItem Text="Новая блок-схема" Click="NewFlowchart_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
@@ -169,6 +163,12 @@
                 <MenuFlyoutItem Text="Сохранить блок-схему" Click="SaveFlowchart_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="S"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Настройки" Click="Settings_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="K"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
@@ -234,7 +234,7 @@
         </MenuBar>
 
 
-        <CommandBar Grid.Row="1" Grid.ColumnSpan="3" DefaultLabelPosition="Right">
+        <CommandBar Grid.Row="1" DefaultLabelPosition="Right">
             <AppBarButton Icon="Add" Label="Новая" Click="NewFlowchart_Click"/>
             <AppBarButton Icon="OpenFile" Label="Открыть" Click="OpenFlowchart_Click"/>
             <AppBarButton Icon="Save" Label="Сохранить" Click="SaveFlowchart_Click"/>
@@ -245,164 +245,229 @@
             </CommandBar.SecondaryCommands>
         </CommandBar>
 
-        <!-- Список блоков -->
-        <Grid Grid.Row="2" Grid.Column="0" Width="200">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <!-- Главный Grid с разделителями -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" MinWidth="150"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="300"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="250" MinWidth="150"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- Заголовок -->
-            <Border Grid.Row="0" Background="#30303030" Padding="10">
-                <TextBlock Text="Блоки" 
-                   HorizontalAlignment="Center" 
-                   FontSize="16"
-                   Foreground="White"
-                   FontWeight="Bold"/>
+            <!-- Список блоков (левая панель) -->
+            <Grid Grid.Column="0" Margin="8,0,0,0">
+                <Border Background="#1A1A1A" 
+                        CornerRadius="12" 
+                        BorderBrush="#2A2A2A" 
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Заголовок -->
+                        <Border Grid.Row="0" 
+                                Background="Transparent" 
+                                Padding="12,10"
+                                CornerRadius="12,12,0,0">
+                            <TextBlock Text="Блоки" 
+                               HorizontalAlignment="Left" 
+                               FontSize="12"
+                               Foreground="#CCCCCC"
+                               FontWeight="SemiBold"/>
+                        </Border>
+
+                        <!-- Список блоков -->
+                        <ListView x:Name="BlocksListView"
+                          Grid.Row="1"
+                          Background="Transparent"
+                          Foreground="White"
+                          BorderThickness="0"
+                          Padding="4"
+                          ItemTemplate="{StaticResource BlockItemTemplate}"
+                          ItemsSource="{x:Bind Blocks, Mode=OneWay}"
+                          CanDragItems="True"
+                          CanReorderItems="False"
+                          AllowDrop="False"
+                          DragItemsStarting="BlocksList_DragItemsStarting">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Margin" Value="5,2"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Левый разделитель -->
+            <Border Grid.Column="1" 
+                    Width="6" 
+                    Background="Transparent"
+                    Margin="2,8"
+                    PointerPressed="LeftSplitter_PointerPressed"
+                    PointerMoved="LeftSplitter_PointerMoved"
+                    PointerReleased="LeftSplitter_PointerReleased"
+                    PointerEntered="Splitter_PointerEntered"
+                    PointerExited="Splitter_PointerExited">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="LeftSplitterTransform"/>
+                </Border.RenderTransform>
+                <Rectangle Fill="#20FFFFFF" 
+                           RadiusX="3" 
+                           RadiusY="3"
+                           HorizontalAlignment="Center"
+                           Width="3"/>
             </Border>
 
-            <!-- Список блоков -->
-            <ListView x:Name="BlocksListView"
-              Grid.Row="1"
-              Background="Transparent"
-              Foreground="White"
-              BorderThickness="0"
-              ItemTemplate="{StaticResource BlockItemTemplate}"
-              ItemsSource="{x:Bind Blocks, Mode=OneWay}"
-              CanDragItems="True"
-              CanReorderItems="False"
-              AllowDrop="False"
-              DragItemsStarting="BlocksList_DragItemsStarting">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Margin" Value="5,2"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    </Style>
-                </ListView.ItemContainerStyle>
-                
-            </ListView>
-        </Grid>
+            <!-- Центральная область (Canvas) -->
+            <Grid Grid.Column="2" Background="Transparent">
+                <ScrollViewer x:Name="MainScrollViewer"
+                     HorizontalScrollBarVisibility="Auto" 
+                     VerticalScrollBarVisibility="Auto"
+                     ZoomMode="Enabled"
+                     Background="Transparent">
 
-        <Grid Grid.Row="2" Grid.Column="1" Background="#FF1E1E1E">
-            <ScrollViewer x:Name="MainScrollViewer"
-                 HorizontalScrollBarVisibility="Auto" 
-                 VerticalScrollBarVisibility="Auto"
-                 ZoomMode="Enabled"
-                 Background="Transparent">
-
-                <Canvas x:Name="FlowchartCanvas" 
-               Width="3000" 
-               Height="3000"
-               Background="Transparent">
-
-                    <Canvas x:Name="GridCanvas"
-            Width="3000"
-            Height="3000"
-            Background="Transparent"
-            IsHitTestVisible="False"/>
-
-                    <Canvas x:Name="ConnectionsCanvas" 
+                    <Canvas x:Name="FlowchartCanvas" 
                    Width="3000" 
                    Height="3000"
-                   Background="Transparent"/>
+                   Background="Transparent">
 
-                    <Canvas x:Name="BlocksCanvas" 
-                   Width="3000" 
-                   Height="3000"
-                   IsTabStop="True"
-                   Background="Transparent"/>
-                    <Border x:Name="VariablePreviewPanel" 
-            Visibility="Collapsed" 
-            Background="#CC000000"  BorderBrush="#FF777777" 
-            BorderThickness="1" 
-            CornerRadius="4" 
-            Padding="5">
-                        <StackPanel x:Name="VariablePreviewStackPanel">
-                        </StackPanel>
-                    </Border>
-                </Canvas>
-            </ScrollViewer>
-            <StackPanel Orientation="Horizontal" 
-               HorizontalAlignment="Right" 
-               VerticalAlignment="Bottom"
-               Margin="20"
-               Spacing="10">
-                <Button x:Name="ZoomInButton" 
-               Content="➕" 
-               Width="40" 
-               Height="40"
-               Click="ZoomInButton_Click"
-               ToolTipService.ToolTip="Увеличить"/>
-                <Button x:Name="ZoomOutButton" 
-               Content="➖" 
-               Width="40" 
-               Height="40"
-               Click="ZoomOutButton_Click"
-               ToolTipService.ToolTip="Уменьшить"/>
-                <Button x:Name="ResetZoomButton" 
-               Content="↺" 
-               Width="40" 
-               Height="40"
-               Click="ResetZoomButton_Click"
-               ToolTipService.ToolTip="Сбросить масштаб"/>
-            </StackPanel>
-            <Border x:Name="NotificationContainer"
-                    VerticalAlignment="Bottom"
-                    HorizontalAlignment="Center"
-                    Margin="0,0,0,20"
-                    Background="#2A2A2A"
-                    BorderBrush="#444444"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="15,10"
-                    Opacity="0"
-                    Visibility="Collapsed"
-                    >
-                <TextBlock x:Name="NotificationTextBlock"
-                           Foreground="White"
-                           FontSize="14"
-                           Text="Уведомление"
-                           TextWrapping="Wrap"
-                           MaxWidth="300"></TextBlock>
-            </Border>
-        </Grid>
+                        <Canvas x:Name="GridCanvas"
+                Width="3000"
+                Height="3000"
+                Background="Transparent"
+                IsHitTestVisible="False"/>
 
-          <!-- TabView с вкладками --><!--
-        <TabView x:Name="MainTabView"
-                 Grid.Row="2"
-                 TabWidthMode="SizeToContent"
-                 CanDragTabs="True"
-                 CanReorderTabs="True"
-                 AddTabButtonClick="MainTabView_AddTabButtonClick"
-                 TabCloseRequested="MainTabView_TabCloseRequested"
-                 SelectionChanged="MainTabView_SelectionChanged">
-        </TabView>-->
+                        <Canvas x:Name="ConnectionsCanvas" 
+                       Width="3000" 
+                       Height="3000"
+                       Background="Transparent"/>
 
-        <!-- Область отладки и трассировки -->
-        <Grid Grid.Row="2" Grid.Column="2" Width="250">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="2*"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+                        <Canvas x:Name="BlocksCanvas" 
+                       Width="3000" 
+                       Height="3000"
+                       IsTabStop="True"
+                       Background="Transparent"/>
 
-            <ScrollViewer Grid.Row="0" Margin="5">
-                <TextBlock x:Name="TraceTextBlock"
-                   Text="Область для отладки и трассировки"
-                   Foreground="White"
-                   TextWrapping="Wrap"/>
-            </ScrollViewer>
-
-            <!--<Border Grid.Row="1" BorderThickness="1" BorderBrush="#555" Padding="5" Background="#222">
-                <ScrollViewer>
-                    <TextBlock x:Name="PseudocodeTextBlock"
-                       Text="Псевдокод появится здесь..."
-                       Foreground="LightGreen"
-                       FontFamily="Consolas"
-                       TextWrapping="Wrap"/>
+                        <Border x:Name="VariablePreviewPanel" 
+                Visibility="Collapsed" 
+                Background="#CC000000"  
+                BorderBrush="#FF777777" 
+                BorderThickness="1" 
+                CornerRadius="4" 
+                Padding="5">
+                            <StackPanel x:Name="VariablePreviewStackPanel">
+                            </StackPanel>
+                        </Border>
+                    </Canvas>
                 </ScrollViewer>
-            </Border>-->
+
+                <StackPanel Orientation="Horizontal" 
+                   HorizontalAlignment="Right" 
+                   VerticalAlignment="Bottom"
+                   Margin="20"
+                   Spacing="10">
+                    <Button x:Name="ZoomInButton" 
+                   Content="➕" 
+                   Width="40" 
+                   Height="40"
+                   Click="ZoomInButton_Click"
+                   ToolTipService.ToolTip="Увеличить"/>
+                    <Button x:Name="ZoomOutButton" 
+                   Content="➖" 
+                   Width="40" 
+                   Height="40"
+                   Click="ZoomOutButton_Click"
+                   ToolTipService.ToolTip="Уменьшить"/>
+                    <Button x:Name="ResetZoomButton" 
+                   Content="↺" 
+                   Width="40" 
+                   Height="40"
+                   Click="ResetZoomButton_Click"
+                   ToolTipService.ToolTip="Сбросить масштаб"/>
+                </StackPanel>
+
+                <Border x:Name="NotificationContainer"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,20"
+                        Background="#2A2A2A"
+                        BorderBrush="#444444"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="15,10"
+                        Opacity="0"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="NotificationTextBlock"
+                               Foreground="White"
+                               FontSize="14"
+                               Text="Уведомление"
+                               TextWrapping="Wrap"
+                               MaxWidth="300"/>
+                </Border>
+            </Grid>
+
+            <!-- Правый разделитель -->
+            <Border Grid.Column="3" 
+                    Width="6" 
+                    Background="Transparent"
+                    Margin="2,8"
+                    PointerPressed="RightSplitter_PointerPressed"
+                    PointerMoved="RightSplitter_PointerMoved"
+                    PointerReleased="RightSplitter_PointerReleased"
+                    PointerEntered="Splitter_PointerEntered"
+                    PointerExited="Splitter_PointerExited">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="RightSplitterTransform"/>
+                </Border.RenderTransform>
+                <Rectangle Fill="#20FFFFFF" 
+                           RadiusX="3" 
+                           RadiusY="3"
+                           HorizontalAlignment="Center"
+                           Width="3"/>
+            </Border>
+
+            <!-- Область отладки и трассировки (правая панель) -->
+            <Grid Grid.Column="4" Margin="0,0,8,0">
+                <Border Background="#1A1A1A" 
+                        CornerRadius="12" 
+                        BorderBrush="#2A2A2A" 
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Заголовок -->
+                        <Border Grid.Row="0" 
+                                Background="Transparent" 
+                                Padding="12,10"
+                                CornerRadius="12,12,0,0">
+                            <TextBlock Text="Отладка" 
+                               HorizontalAlignment="Left" 
+                               FontSize="12"
+                               Foreground="#CCCCCC"
+                               FontWeight="SemiBold"/>
+                        </Border>
+
+                        <!-- Содержимое -->
+                        <ScrollViewer Grid.Row="1" Padding="12,8">
+                            <TextBlock x:Name="TraceTextBlock"
+                               Text="Область для отладки и трассировки"
+                               Foreground="#999999"
+                               FontSize="12"
+                               TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

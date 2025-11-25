@@ -3,31 +3,23 @@ using Blocks_.haru;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Blocks_
 {
     public sealed partial class MainWindow : Window
     {
-        // Добавьте этот код в ext.cs, заменив существующие методы CreateWhileLoopStructure
-
         public void CreateWhileLoopStructure(double startX, double startY)
         {
             SaveState();
 
-            // 1. Вычисляем координаты сетки для блока условия (ромб)
-            int loopCol = (int)Math.Round(startX / (double)GRID_STEP);
-            int loopRow = (int)Math.Round(startY / (double)GRID_STEP);
+            int loopCol = (int)Math.Round(startX / (double)SettingsWindow.AppSettings.GridStep);
+            int loopRow = (int)Math.Round(startY / (double)SettingsWindow.AppSettings.GridStep);
 
             loopRow = Math.Max(0, Math.Min(GRID_ROWS - 1, loopRow));
             loopCol = Math.Max(0, Math.Min(GRID_COLUMNS - 1, loopCol));
 
             GridNode loopNode = virtualGrid[loopRow, loopCol];
 
-            // Если ячейка занята, ищем свободную
             if (!loopNode.IsAvailable)
             {
                 loopNode = FindNearestFreeNode(loopRow, loopCol);
@@ -38,13 +30,12 @@ namespace Blocks_
                 }
             }
 
-            // 2. Определяем ячейку для соединителя (круг) - справа от условия
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row + 2;
 
-            if (connectorCol >= GRID_COLUMNS)
+            if (connectorRow >= GRID_ROWS)
             {
-                ShowNotification("Недостаточно места для структуры цикла.");
+                ShowNotification("Недостаточно места для структуры цикла (нужно пространство снизу).");
                 return;
             }
 
@@ -60,7 +51,7 @@ namespace Blocks_
                 }
             }
 
-            // 3. Создаем блок условия цикла (WHILE - ромб)
+            // 3. Создаем блок условия
             blockCounter++;
             var loopBlock = new BlockItem
             {
@@ -68,8 +59,8 @@ namespace Blocks_
                 Name = $"Пока {blockCounter}",
                 Description = "Условие цикла 'ПОКА'",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
@@ -88,19 +79,21 @@ namespace Blocks_
             Canvas.SetTop(loopBorder, loopBlock.CanvasTop);
             BlocksCanvas.Children.Add(loopBorder);
 
+            // 4. Создаем соединитель (тело цикла)
             var connectorBlock = new BlockItem
             {
                 Type = BlockType.LoopConnector,
                 Name = $"CONN{blockCounter}",
                 Description = "Тело цикла",
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 
             connectorNode.OccupiedBy = connectorBlock;
             listofblocks.Add(connectorBlock);
+
             Border connectorBorder = DrawBlock.GetBlock(connectorBlock);
             connectorBorder.Tag = connectorBlock;
             connectorBorder.PointerPressed += BlockControl_PointerPressed;
@@ -112,12 +105,14 @@ namespace Blocks_
             Canvas.SetLeft(connectorBorder, connectorBlock.CanvasLeft);
             Canvas.SetTop(connectorBorder, connectorBlock.CanvasTop);
             BlocksCanvas.Children.Add(connectorBorder);
+
             CreateManualConnection(loopBlock, connectorBlock, ConnectionType.TrueBranch);
             CreateManualConnection(connectorBlock, loopBlock, ConnectionType.Normal);
+
             HighlightAvailableCells();
             BuildSyntaxTree();
 
-            ShowNotification($"Структура цикла WHILE создана:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nВыход из цикла (Нет) - вниз от условия.");
+            ShowNotification($"Структура цикла WHILE создана:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nДа (вниз) → тело\nНет (вправо) → выход\nОбратная связь → слева");
         }
 
         public void CreateWhileLoopStructureInViewport()
@@ -130,12 +125,13 @@ namespace Blocks_
                 return;
             }
 
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            // ИЗМЕНЕНО: Соединитель СНИЗУ
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row + 2;
 
-            if (connectorCol >= GRID_COLUMNS)
+            if (connectorRow >= GRID_ROWS)
             {
-                ShowNotification("Недостаточно места для структуры цикла в текущей области.");
+                ShowNotification("Недостаточно места для структуры цикла в текущей области (нужно место снизу).");
                 return;
             }
 
@@ -150,7 +146,6 @@ namespace Blocks_
                 }
             }
 
-
             blockCounter++;
             var loopBlock = new BlockItem
             {
@@ -158,14 +153,13 @@ namespace Blocks_
                 Name = $"Пока {blockCounter}",
                 Description = "Условие цикла 'ПОКА'",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
             loopNode.OccupiedBy = loopBlock;
             listofblocks.Add(loopBlock);
-
 
             Border loopBorder = DrawBlock.GetBlock(loopBlock);
             loopBorder.Tag = loopBlock;
@@ -184,10 +178,10 @@ namespace Blocks_
                 Type = BlockType.LoopConnector,
                 Name = $"CONN{blockCounter}",
                 Description = "Тело цикла",
-                Code = "", // Пустой код
+                Code = "",
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 
@@ -205,12 +199,15 @@ namespace Blocks_
             Canvas.SetLeft(connectorBorder, connectorBlock.CanvasLeft);
             Canvas.SetTop(connectorBorder, connectorBlock.CanvasTop);
             BlocksCanvas.Children.Add(connectorBorder);
-            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.LoopBody);
+
+            // ИСПРАВЛЕНО: TrueBranch вниз, Normal обратно
+            CreateManualConnection(loopBlock, connectorBlock, ConnectionType.TrueBranch);
             CreateManualConnection(connectorBlock, loopBlock, ConnectionType.Normal);
+
             HighlightAvailableCells();
             BuildSyntaxTree();
 
-            ShowNotification($"Структура цикла WHILE создана в области видимости:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nВыход из цикла (Нет) - вниз от условия.\nТеперь можно добавлять блоки внутрь цикла!");
+            ShowNotification($"Структура цикла WHILE создана в области видимости:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nДобавляйте блоки между условием и соединителем!");
         }
     }
 }

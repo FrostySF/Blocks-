@@ -17,25 +17,13 @@ namespace Blocks_.Core.Services
             declaredVariables = declaredVars;
         }
 
-
-        // НОВЫЙ МЕТОД: Проверка и получение значения переменной
         private double GetVariableValue(string name)
         {
-            // 1. Проверка объявления переменной
             if (!declaredVariables.Contains(name))
-            {
                 throw new InvalidOperationException($"Переменная '{name}' не объявлена в блоке 'Описание переменных'.");
-            }
-
-            // 2. Получение значения (так как переменная объявлена, она должна быть в словаре, 
-            // так как в InitializeVariables мы присваиваем 0, если нет начального значения)
             if (variables.TryGetValue(name, out double value))
-            {
                 return value;
-            }
 
-            // Если дошли сюда, это неожиданный случай (переменная объявлена, но нет в variables),
-            // что также можно считать ошибкой неинициализированного использования.
             throw new InvalidOperationException($"Переменная '{name}' объявлена, но не инициализирована (не присвоено начальное значение).");
         }
         public double Evaluate(string expression)
@@ -74,7 +62,6 @@ namespace Blocks_.Core.Services
                 }
                 else
                 {
-                    // двухсимвольные операторы
                     if (i + 1 < expr.Length)
                     {
                         string two = $"{c}{expr[i + 1]}";

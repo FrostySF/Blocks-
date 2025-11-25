@@ -21,8 +21,8 @@ namespace Blocks_
                 return;
             }
 
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row + 2;
 
             if (connectorCol >= GRID_COLUMNS)
             {
@@ -49,8 +49,8 @@ namespace Blocks_
                 Name = $"Подготовка {blockCounter}",
                 Description = "Цикл 'FOR'",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
@@ -72,12 +72,12 @@ namespace Blocks_
             var connectorBlock = new BlockItem
             {
                 Type = BlockType.LoopConnector,
-                Name = $"CONN{blockCounter}",
+                Name = $"",
                 Description = "Тело цикла FOR",
                 Code = "",
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 
@@ -117,8 +117,8 @@ namespace Blocks_
             SaveState();
 
             // 1. Вычисляем координаты сетки для блока условия (ромб FOR)
-            int loopCol = (int)Math.Round(startX / (double)GRID_STEP);
-            int loopRow = (int)Math.Round(startY / (double)GRID_STEP);
+            int loopCol = (int)Math.Round(startX / (double)SettingsWindow.AppSettings.GridStep);
+            int loopRow = (int)Math.Round(startY / (double)SettingsWindow.AppSettings.GridStep);
 
             loopRow = Math.Max(0, Math.Min(GRID_ROWS - 1, loopRow));
             loopCol = Math.Max(0, Math.Min(GRID_COLUMNS - 1, loopCol));
@@ -135,9 +135,8 @@ namespace Blocks_
                 }
             }
 
-            // 2. Ячейка для тела — справа на 2 клетки
-            int connectorCol = loopNode.Column + 2;
-            int connectorRow = loopNode.Row;
+            int connectorCol = loopNode.Column;
+            int connectorRow = loopNode.Row +2;
 
             if (connectorCol >= GRID_COLUMNS)
             {
@@ -165,8 +164,8 @@ namespace Blocks_
                 Name = $"Подготовка {blockCounter}",
                 Description = "Цикл 'FOR'",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
@@ -189,12 +188,12 @@ namespace Blocks_
             var connectorBlock = new BlockItem
             {
                 Type = BlockType.LoopConnector,
-                Name = $"CONN{blockCounter}",
+                Name = $"",
                 Description = "Тело цикла FOR",
                 Code = "",
                 Id = Guid.NewGuid(),
-                CanvasLeft = connectorNode.Column * GRID_STEP,
-                CanvasTop = connectorNode.Row * GRID_STEP,
+                CanvasLeft = connectorNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = connectorNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = connectorNode
             };
 

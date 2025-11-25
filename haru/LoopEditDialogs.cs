@@ -200,10 +200,8 @@ namespace Blocks_
             modeCombo.Items.Add(new ComboBoxItem { Content = "Текстовый ввод" });
             modeCombo.Items.Add(new ComboBoxItem { Content = "Шаблон" });
 
-            // Контейнер для динамического содержимого
             var contentPanel = new StackPanel { Spacing = 10 };
 
-            // Текстовый режим (по умолчанию)
             var textLabel = new TextBlock { Text = "Конструкция цикла (init; condition; step):" };
             var codeBox = new TextBox
             {
@@ -215,7 +213,7 @@ namespace Blocks_
             contentPanel.Children.Add(textLabel);
             contentPanel.Children.Add(codeBox);
 
-            // Шаблонные поля для FOR
+  
             TextBox initBox = null, condBox = null, stepBox = null;
 
             // Обработчик смены режима
@@ -306,41 +304,6 @@ namespace Blocks_
                 }
 
                 UpdateBlockVisual(block);
-            }
-        }
-
-        /// <summary>
-        /// Обновляет визуальное представление блока после изменения
-        /// </summary>
-        private void UpdateBlockVisual(BlockItem block)
-        {
-            var border = BlocksCanvas.Children.OfType<Border>()
-                .FirstOrDefault(b => b.Tag == block);
-
-            if (border != null)
-            {
-                // Пересоздаем визуальный элемент
-                var newBorder = DrawBlock.GetBlock(block);
-                newBorder.Tag = block;
-
-                // Копируем обработчики событий
-                newBorder.PointerPressed += BlockControl_PointerPressed;
-                newBorder.PointerReleased += BlockControl_PointerReleased;
-                newBorder.DoubleTapped += BlockControl_DoubleTapped;
-                AttachAnchorHandlers(newBorder);
-                InitializeBlockContextMenu(newBorder);
-
-                // Устанавливаем позицию
-                Canvas.SetLeft(newBorder, block.CanvasLeft);
-                Canvas.SetTop(newBorder, block.CanvasTop);
-
-                // Заменяем старый элемент
-                int index = BlocksCanvas.Children.IndexOf(border);
-                BlocksCanvas.Children.Remove(border);
-                BlocksCanvas.Children.Insert(index, newBorder);
-
-                // Обновляем соединения
-                UpdateConnectionLines(block);
             }
         }
     }

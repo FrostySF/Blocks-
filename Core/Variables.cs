@@ -13,11 +13,29 @@ namespace Blocks_
 {
     public sealed partial class MainWindow : Window
     {
+        private DispatcherTimer autoSaveTimer;
+        private List<BlockItem> clipboard = new List<BlockItem>();
+        private List<ConnectionLine> clipboardConnections = new List<ConnectionLine>();
+        private Stack<FlowchartState> undoStack = new Stack<FlowchartState>();
+        private Stack<FlowchartState> redoStack = new Stack<FlowchartState>();
+        private const int MAX_UNDO_STEPS = 50;
+
+        private HashSet<BlockItem> selectedBlocks = new HashSet<BlockItem>();
+        private bool isMultiSelecting = false;
+        private Point selectionStartPoint;
+        private Rectangle selectionRectangle;
+        private bool isDraggingSelection = false;
+        private BlockItem clickedBlock = null;
+
+        private bool isLeftSplitterDragging = false;
+        private bool isRightSplitterDragging = false;
+        private double splitterStartX = 0;
+
         private BlockItem draggedBlockTemplate = null;
         private bool isDraggingFromPanel = false;
         private Border dragPreviewBorder = null;
         private readonly Dictionary<BlockItem, Border> blockVariablePanels = new();
-        private const double PanningSensitivity = 3.5;
+        private double PanningSensitivity = SettingsWindow.AppSettings.PanningSensitivity;
 
         private bool isSpaceBarPressed = false;
 
@@ -34,7 +52,7 @@ namespace Blocks_
 
 
         private Dictionary<ConnectionLine, Polygon> connectionArrows = new Dictionary<ConnectionLine, Polygon>();
-        private int highlightRadius = 1;
+        private int highlightRadius = SettingsWindow.AppSettings.HighlightRadius;
         private List<BlockItem> listofblocks = new List<BlockItem>();
         private Ellipse selectedAnchor = null;
         private Line previewLine = null;
@@ -42,7 +60,7 @@ namespace Blocks_
         private ConnectionType connectionStartType = ConnectionType.Normal;
 
         private GridNode[,] virtualGrid;
-        private const int GRID_STEP = 100;
+        private int GRID_STEP = SettingsWindow.AppSettings.GridStep;
         private const int GRID_ROWS = 30;
         private const int GRID_COLUMNS = 30;
 
@@ -57,8 +75,8 @@ namespace Blocks_
 
         private List<Rectangle> gridHighlights = new();
 
-        private const double MIN_SEGMENT_LENGTH = 10.0;
-        private const double OBSTACLE_CLEARANCE = 15.0;
+        private double MIN_SEGMENT_LENGTH = SettingsWindow.AppSettings.MinSegmentLength;
+        private double OBSTACLE_CLEARANCE = SettingsWindow.AppSettings.ObstacleClearance;
 
         private readonly SolidColorBrush ErrorLineColor = new SolidColorBrush(Colors.Red);
         private readonly SolidColorBrush NormalLineColor = new SolidColorBrush(Colors.White);
