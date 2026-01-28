@@ -13,7 +13,7 @@ namespace Blocks_
         /// <summary>
         /// Создает структуру цикла Do-While в указанных координатах
         /// </summary>
-        public void CreateDoWhileLoopStructure(double startX, double startY)
+        public void CreateDoWhileLoopStructure(double startX, double startY, string shot, string docs)
         {
             SaveState();
 
@@ -56,14 +56,15 @@ namespace Blocks_
                 }
             }
 
-            // 3. Создаем блок условия цикла (DO-WHILE - ромб)
             blockCounter++;
             var loopBlock = new BlockItem
             {
                 Type = BlockType.DoWhile,
-                Name = $"Делай {blockCounter}",
+                Name = $"Делай",
                 Description = "Цикл с постусловием 'DO-WHILE'",
                 Id = Guid.NewGuid(),
+                Shot = shot,
+                Docs = docs,
                 CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
                 CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
@@ -116,14 +117,12 @@ namespace Blocks_
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification($"Структура цикла DO-WHILE создана:\n- Условие: {loopBlock.Name}\n- Тело: {connectorBlock.Name}\n\nТело выполняется минимум 1 раз!");
         }
 
         /// <summary>
         /// Создает структуру цикла Do-While в области видимости
         /// </summary>
-        public void CreateDoWhileLoopStructureInViewport()
+        public void CreateDoWhileLoopStructureInViewport(string shot, string docs)
         {
             SaveState();
 
@@ -159,12 +158,14 @@ namespace Blocks_
             var loopBlock = new BlockItem
             {
                 Type = BlockType.DoWhile,
-                Name = $"Делай {blockCounter}",
+                Name = $"Делай",
                 Description = "Цикл с постусловием 'DO-WHILE'",
                 Code = "i < 10",
                 Id = Guid.NewGuid(),
-                CanvasLeft = loopNode.Column * GRID_STEP,
-                CanvasTop = loopNode.Row * GRID_STEP,
+                Shot = shot,
+                Docs = docs,
+                CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
             };
 
@@ -215,8 +216,6 @@ namespace Blocks_
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification($"Структура цикла DO-WHILE создана в области видимости:\n- Условие: {loopBlock.Name}\n- Тело: {connectorBlock.Name}");
         }
     }
 }

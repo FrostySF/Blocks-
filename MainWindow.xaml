@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="Blocks_.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -17,15 +16,21 @@
     </Window.SystemBackdrop>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
         <Grid.Resources>
             <!-- DataTemplate для списка блоков -->
             <DataTemplate x:Key="BlockItemTemplate" x:DataType="core:BlockItem">
                 <Border Background="{x:Bind BackgroundColor}" 
-                CornerRadius="8"
-                BorderThickness="1"
-                BorderBrush="#FF555555"
-                Padding="10"
-                Margin="8,4">
+         CornerRadius="8"
+         BorderThickness="1"
+         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+         Padding="10"
+         Margin="8,4">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
@@ -33,38 +38,40 @@
                         </Grid.RowDefinitions>
 
                         <Viewbox Grid.Row="0" 
-                    MaxWidth="32" 
-                    MaxHeight="32"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
+                             MaxWidth="32" 
+                             MaxHeight="32"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center">
                             <FontIcon Glyph="{x:Bind Icon}"
-                         Foreground="White"
-                         FontSize="20"/>
+                              Foreground="White"
+                              FontFamily="Segoe UI Symbol" 
+                              FontSize="20"/>
+
                         </Viewbox>
                         <StackPanel Grid.Row="1" 
-                       HorizontalAlignment="Center"
-                       Margin="0,4,0,0">
+                            HorizontalAlignment="Center"
+                            Margin="0,4,0,0">
                             <TextBlock Text="{x:Bind Name}"
-                          Foreground="White"
-                          TextAlignment="Center"
-                          FontSize="11"
-                          TextWrapping="Wrap"
-                          MaxLines="2"
-                          TextTrimming="CharacterEllipsis"/>
+                               Foreground="White"
+                               TextAlignment="Center"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               MaxLines="2"
+                               TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
 
                         <Button Grid.Column="2"
-                            Content="&#xE109;"
-                            FontFamily="Segoe MDL2 Assets"
-                            Foreground="#FFCCCCCC"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="4"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Click="BlockButton_Click"
-                            Tag="{x:Bind}"
-                            ToolTipService.ToolTip="Добавить блок на канвас">
+                     Content="&#xE109;"
+                     FontFamily="Segoe MDL2 Assets"
+                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="4"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Top"
+                     Click="BlockButton_Click"
+                     Tag="{x:Bind}"
+                     ToolTipService.ToolTip="Добавить блок на канвас">
                         </Button>
 
                     </Grid>
@@ -75,12 +82,12 @@
             <!-- DataTemplate для блоков на канвасе -->
             <DataTemplate x:Key="CanvasBlockTemplate" x:DataType="core:BlockItem">
                 <Border Background="{x:Bind BackgroundColor}"
-                CornerRadius="8"
-                BorderThickness="2"
-                BorderBrush="{x:Bind BorderColor}"
-                Padding="12"
-                Width="120"
-                Height="70">
+         CornerRadius="8"
+         BorderThickness="2"
+         BorderBrush="{x:Bind BorderColor}"
+         Padding="12"
+         Width="120"
+         Height="70">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -88,18 +95,18 @@
                         </Grid.RowDefinitions>
 
                         <FontIcon Grid.Row="0"
-                         Glyph="{x:Bind Icon}"
-                         FontSize="16"
-                         Foreground="White"
-                         HorizontalAlignment="Center"
-                         Margin="0,0,0,4"/>
+                  Glyph="{x:Bind Icon}"
+                  FontSize="16"
+                  Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                  HorizontalAlignment="Center"
+                  Margin="0,0,0,4"/>
 
                         <TextBlock Grid.Row="1"
-                          Text="{x:Bind Name}"
-                          Foreground="White"
-                          HorizontalAlignment="Center"
-                          TextAlignment="Center"
-                          TextWrapping="Wrap"/>
+                   Text="{x:Bind Name}"
+                   Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                   HorizontalAlignment="Center"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap"/>
                     </Grid>
                 </Border>
             </DataTemplate>
@@ -109,29 +116,29 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ContentControl">
                             <Border x:Name="BlockBorder"
-                            Background="{Binding BackgroundColor}"
-                            CornerRadius="8"
-                            BorderThickness="2"
-                            BorderBrush="{Binding BorderColor}"
-                            Padding="12">
+                     Background="{Binding BackgroundColor}"
+                     CornerRadius="8"
+                     BorderThickness="2"
+                     BorderBrush="{Binding BorderColor}"
+                     Padding="12">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="*"/>
                                     </Grid.RowDefinitions>
                                     <FontIcon Grid.Row="0"
-                                     Glyph="{Binding Icon}"
-                                     FontSize="16"
-                                     Foreground="White"
-                                     HorizontalAlignment="Center"
-                                     Margin="0,0,0,4"/>
+                              Glyph="{Binding Icon}"
+                              FontSize="16"
+                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,4"/>
 
 
                                     <TextBlock Grid.Row="1"
-                                      Text="{Binding Name}"
-                                      Foreground="White"
-                                      HorizontalAlignment="Center"
-                                      TextAlignment="Center"/>
+                               Text="{Binding Name}"
+                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </ControlTemplate>
@@ -139,13 +146,6 @@
                 </Setter>
             </Style>
         </Grid.Resources>
-
-
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
 
         <MenuBar Grid.Row="0">
@@ -163,6 +163,11 @@
                 <MenuFlyoutItem Text="Сохранить блок-схему" Click="SaveFlowchart_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="S"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Сохранить как" Click="SaveAsFlowchart_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control, Shift" Key="S"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
@@ -233,7 +238,6 @@
             </MenuBarItem>
         </MenuBar>
 
-
         <CommandBar Grid.Row="1" DefaultLabelPosition="Right">
             <AppBarButton Icon="Add" Label="Новая" Click="NewFlowchart_Click"/>
             <AppBarButton Icon="OpenFile" Label="Открыть" Click="OpenFlowchart_Click"/>
@@ -245,21 +249,19 @@
             </CommandBar.SecondaryCommands>
         </CommandBar>
 
-        <!-- Главный Grid с разделителями -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="200" MinWidth="150"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*" MinWidth="300"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="250" MinWidth="150"/>
+                <ColumnDefinition Width="200" MinWidth="150"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Список блоков (левая панель) -->
-            <Grid Grid.Column="0" Margin="8,0,0,0">
-                <Border Background="#1A1A1A" 
+            <Grid Grid.Column="0" Margin="8,0,0,8">
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="12" 
-                        BorderBrush="#2A2A2A" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
                         BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -267,31 +269,29 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Заголовок -->
                         <Border Grid.Row="0" 
                                 Background="Transparent" 
                                 Padding="12,10"
                                 CornerRadius="12,12,0,0">
                             <TextBlock Text="Блоки" 
-                               HorizontalAlignment="Left" 
-                               FontSize="12"
-                               Foreground="#CCCCCC"
-                               FontWeight="SemiBold"/>
+                                HorizontalAlignment="Left" 
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                FontWeight="SemiBold"/>
                         </Border>
 
-                        <!-- Список блоков -->
                         <ListView x:Name="BlocksListView"
-                          Grid.Row="1"
-                          Background="Transparent"
-                          Foreground="White"
-                          BorderThickness="0"
-                          Padding="4"
-                          ItemTemplate="{StaticResource BlockItemTemplate}"
-                          ItemsSource="{x:Bind Blocks, Mode=OneWay}"
-                          CanDragItems="True"
-                          CanReorderItems="False"
-                          AllowDrop="False"
-                          DragItemsStarting="BlocksList_DragItemsStarting">
+                            Grid.Row="1"
+                            Background="Transparent"
+                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                            BorderThickness="0"
+                            Padding="4"
+                            ItemTemplate="{StaticResource BlockItemTemplate}"
+                            ItemsSource="{x:Bind Blocks, Mode=OneWay}"
+                            CanDragItems="True"
+                            CanReorderItems="False"
+                            AllowDrop="False"
+                            DragItemsStarting="BlocksList_DragItemsStarting">
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem">
                                     <Setter Property="Background" Value="Transparent"/>
@@ -305,7 +305,6 @@
                 </Border>
             </Grid>
 
-            <!-- Левый разделитель -->
             <Border Grid.Column="1" 
                     Width="6" 
                     Background="Transparent"
@@ -318,102 +317,139 @@
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="LeftSplitterTransform"/>
                 </Border.RenderTransform>
-                <Rectangle Fill="#20FFFFFF" 
-                           RadiusX="3" 
-                           RadiusY="3"
-                           HorizontalAlignment="Center"
-                           Width="3"/>
+                <Rectangle Fill="{ThemeResource SubtleFillColorSecondaryBrush}" 
+                            RadiusX="3" 
+                            RadiusY="3"
+                            HorizontalAlignment="Center"
+                            Width="3"/>
             </Border>
 
-            <!-- Центральная область (Canvas) -->
             <Grid Grid.Column="2" Background="Transparent">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
                 <ScrollViewer x:Name="MainScrollViewer"
-                     HorizontalScrollBarVisibility="Auto" 
-                     VerticalScrollBarVisibility="Auto"
-                     ZoomMode="Enabled"
-                     Background="Transparent">
+                        Grid.Row="0"
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto"
+                        ZoomMode="Enabled"
+                        Background="Transparent">
 
                     <Canvas x:Name="FlowchartCanvas" 
-                   Width="3000" 
-                   Height="3000"
-                   Background="Transparent">
+                        Width="3000" 
+                        Height="3000"
+                        Background="Transparent"
+                        AllowDrop="True"
+                        Drop="FlowchartCanvas_Drop"
+                        DragOver="FlowchartCanvas_DragOver">
 
                         <Canvas x:Name="GridCanvas"
-                Width="3000"
-                Height="3000"
-                Background="Transparent"
-                IsHitTestVisible="False"/>
+                            Width="3000"
+                            Height="3000"
+                            Background="Transparent"
+                            IsHitTestVisible="False"/>
 
                         <Canvas x:Name="ConnectionsCanvas" 
-                       Width="3000" 
-                       Height="3000"
-                       Background="Transparent"/>
+                            Width="3000" 
+                            Height="3000"
+                            Background="Transparent"
+                            IsHitTestVisible="False"/>
 
                         <Canvas x:Name="BlocksCanvas" 
-                       Width="3000" 
-                       Height="3000"
-                       IsTabStop="True"
-                       Background="Transparent"/>
+                            Width="3000" 
+                            Height="3000"
+                            IsTabStop="True"
+                            Background="Transparent"
+                            AllowDrop="True"/>
 
                         <Border x:Name="VariablePreviewPanel" 
-                Visibility="Collapsed" 
-                Background="#CC000000"  
-                BorderBrush="#FF777777" 
-                BorderThickness="1" 
-                CornerRadius="4" 
-                Padding="5">
-                            <StackPanel x:Name="VariablePreviewStackPanel">
-                            </StackPanel>
+                            Visibility="Collapsed" 
+                            Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                            BorderThickness="1" 
+                            CornerRadius="4" 
+                            Padding="5">
+                            <StackPanel x:Name="VariablePreviewStackPanel"/>
                         </Border>
                     </Canvas>
                 </ScrollViewer>
 
-                <StackPanel Orientation="Horizontal" 
-                   HorizontalAlignment="Right" 
-                   VerticalAlignment="Bottom"
-                   Margin="20"
-                   Spacing="10">
+                <StackPanel Grid.Row="0"
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    VerticalAlignment="Bottom"
+                    Margin="20"
+                    Spacing="10">
                     <Button x:Name="ZoomInButton" 
-                   Content="➕" 
-                   Width="40" 
-                   Height="40"
-                   Click="ZoomInButton_Click"
-                   ToolTipService.ToolTip="Увеличить"/>
+                        Content="+" 
+                        Width="40" 
+                        Height="40"
+                        Click="ZoomInButton_Click"
+                        ToolTipService.ToolTip="Увеличить"/>
                     <Button x:Name="ZoomOutButton" 
-                   Content="➖" 
-                   Width="40" 
-                   Height="40"
-                   Click="ZoomOutButton_Click"
-                   ToolTipService.ToolTip="Уменьшить"/>
+                        Content="-" 
+                        Width="40" 
+                        Height="40"
+                        Click="ZoomOutButton_Click"
+                        ToolTipService.ToolTip="Уменьшить"/>
                     <Button x:Name="ResetZoomButton" 
-                   Content="↺" 
-                   Width="40" 
-                   Height="40"
-                   Click="ResetZoomButton_Click"
-                   ToolTipService.ToolTip="Сбросить масштаб"/>
+                        Content="↺" 
+                        Width="40" 
+                        Height="40"
+                        Click="ResetZoomButton_Click"
+                        ToolTipService.ToolTip="Сбросить масштаб"/>
                 </StackPanel>
 
                 <Border x:Name="NotificationContainer"
+                        Grid.Row="0"
                         VerticalAlignment="Bottom"
                         HorizontalAlignment="Center"
                         Margin="0,0,0,20"
-                        Background="#2A2A2A"
-                        BorderBrush="#444444"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
                         Padding="15,10"
                         Opacity="0"
                         Visibility="Collapsed">
                     <TextBlock x:Name="NotificationTextBlock"
-                               Foreground="White"
-                               FontSize="14"
-                               Text="Уведомление"
-                               TextWrapping="Wrap"
-                               MaxWidth="300"/>
+                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                FontSize="14"
+                                Text="Уведомление"
+                                TextWrapping="Wrap"
+                                MaxWidth="300"/>
                 </Border>
+                <StackPanel Grid.Row="1"
+                    Orientation="Horizontal" 
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                    Opacity="0.9"
+                    Padding="10"
+                    
+                    Margin="5" 
+                    HorizontalAlignment="Stretch"
+                    
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                    CornerRadius="10">
+
+                    <TextBlock x:Name="FileStatusTextBlock"
+                        Text="Файл: Нет открытого файла"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                        FontSize="12"
+                        VerticalAlignment="Center"/>
+
+                    <TextBlock x:Name="BlockCountTextBlock"
+                        Text="Блоков: 0"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                        FontSize="12"
+                        VerticalAlignment="Center"
+                        Margin="10,0,0,0"/>
+                </StackPanel>
             </Grid>
 
-            <!-- Правый разделитель -->
+
             <Border Grid.Column="3" 
                     Width="6" 
                     Background="Transparent"
@@ -426,18 +462,17 @@
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="RightSplitterTransform"/>
                 </Border.RenderTransform>
-                <Rectangle Fill="#20FFFFFF" 
-                           RadiusX="3" 
-                           RadiusY="3"
-                           HorizontalAlignment="Center"
-                           Width="3"/>
+                <Rectangle Fill="{ThemeResource SubtleFillColorSecondaryBrush}" 
+                            RadiusX="3" 
+                            RadiusY="3"
+                            HorizontalAlignment="Center"
+                            Width="3"/>
             </Border>
 
-            <!-- Область отладки и трассировки (правая панель) -->
             <Grid Grid.Column="4" Margin="0,0,8,0">
-                <Border Background="#1A1A1A" 
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="12" 
-                        BorderBrush="#2A2A2A" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
                         BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -445,29 +480,28 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Заголовок -->
                         <Border Grid.Row="0" 
                                 Background="Transparent" 
                                 Padding="12,10"
                                 CornerRadius="12,12,0,0">
                             <TextBlock Text="Отладка" 
-                               HorizontalAlignment="Left" 
-                               FontSize="12"
-                               Foreground="#CCCCCC"
-                               FontWeight="SemiBold"/>
+                                HorizontalAlignment="Left" 
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                FontWeight="SemiBold"/>
                         </Border>
 
-                        <!-- Содержимое -->
-                        <ScrollViewer Grid.Row="1" Padding="12,8">
+                        <ScrollViewer Grid.Row="1" Padding="12,8" x:Name="TraceScrollViewer">
                             <TextBlock x:Name="TraceTextBlock"
-                               Text="Область для отладки и трассировки"
-                               Foreground="#999999"
-                               FontSize="12"
-                               TextWrapping="Wrap"/>
+                                Text="Область для отладки и трассировки"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                FontSize="12"
+                                TextWrapping="Wrap"/>
                         </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>
         </Grid>
+
     </Grid>
 </Window>

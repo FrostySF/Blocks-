@@ -20,15 +20,16 @@ namespace Blocks_
     public sealed partial class MainWindow : Window
     {
         private SettingsWindow settingsWindow;
-       
+        private StorageFile currentFile = null;
 
         public MainWindow()
         {
-            ApplyTheme();
+            
             InitializeComponent();
             InitializeBlocks();
 
             InitializeClipboardAndUndo();
+            UpdateStatusBar();
 
             FlowchartCanvas.PointerMoved += FlowchartCanvas_PointerMoved;
             FlowchartCanvas.PointerReleased += FlowchartCanvas_PointerReleased;
@@ -46,6 +47,7 @@ namespace Blocks_
             this.AppWindow.TitleBar.ButtonHoverBackgroundColor = Color.FromArgb(20, 255, 255, 255);
             this.AppWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(30, 255, 255, 255);
 
+
             FlowchartCanvas.Loaded += (s, e) => DrawGrid(20);
             FlowchartCanvas.SizeChanged += (s, e) =>
             {
@@ -62,10 +64,20 @@ namespace Blocks_
 
             InitializeVirtualGrid();
             EditWindow.Content = this.Content;
-
+            ApplySettings();
             InitializeAutoSave();
         }
 
+        private void UpdateStatusBar()
+        {
+            if (BlockCountTextBlock == null || FileStatusTextBlock == null) return;
+
+            int blockCount = listofblocks?.Count ?? 0; 
+            BlockCountTextBlock.Text = $"Блоков: {blockCount}";
+
+            string fileName = currentFile != null ? currentFile.Name : "Нет открытого файла";
+            FileStatusTextBlock.Text = $"Файл: {fileName}";
+        }
         private void RecalculateBlockPositions()
         {
             int newGridStep = SettingsWindow.AppSettings.GridStep;
@@ -104,53 +116,61 @@ namespace Blocks_
 
         private async void AutoSaveFlowchart()
         {
-            try
+            if (currentFile != null)
             {
-                var folder = ApplicationData.Current.LocalFolder;
-                var file = await folder.CreateFileAsync("autosave.prg", CreationCollisionOption.ReplaceExisting);
-
-                ShowNotification("Автосохранение выполнено");
+                await SaveFlowchartData(currentFile);
+                ShowNotification($"Автосохранение выполнено в текущий файл: {currentFile.Name}");
             }
-            catch (Exception ex)
+            else
             {
-                ShowNotification($"Ошибка автосохранения: {ex.Message}");
+                try
+                {
+                    var folder = ApplicationData.Current.LocalFolder;
+                    var autosaveFile = await folder.CreateFileAsync("autosave.prg", CreationCollisionOption.ReplaceExisting);
+                    await SaveFlowchartData(autosaveFile); 
+                    ShowNotification("Автосохранение выполнено в файл восстановления (autosave.prg)");
+                }
+                catch (Exception ex)
+                {
+                    ShowNotification($"Ошибка автосохранения: {ex.Message}");
+                }
             }
         }
 
         private void InitializeBlocks()
         {
-            AddBlock("Начало", "\xE80F", "Начальный блок схемы", BlockType.Start, "", "");
-            AddBlock("Конец", "\xE8BB", "Конечный блок схемы", BlockType.End, "", "");
-            AddBlock("Присваивание", "\xE909", "Блок для обработки данных", BlockType.Process,
+            AddBlock("Начало", "\x25CB", "Начальный блок схемы", BlockType.Start, "", "");
+            AddBlock("Конец", "\x25CB", "Конечный блок схемы", BlockType.End, "", ""); 
+            AddBlock("Присваивание", "\x25AD", "Блок для обработки данных", BlockType.Process,
                 "Присваивание\n<Элемент переменной> = <Арифметическое выражение>\n<Элемент таблицы> = <Арифметическое выражение>",
                 "Введите арифметическое выражение:");
-            AddBlock("Описание", "\xE909", "Описание переменных", BlockType.VariableDeclaration,
-                "Описание переменных\n<Тип данных> <Имя переменной>\nПримеры: int x; double y; string text;",
+            AddBlock("Описание", "\x25A3", "Описание переменных", BlockType.VariableDeclaration,
+                "Описание переменных\n<Имя переменной> = <НеОбязательноеЗначение>\nПримеры: a=0; x; what=666;",
                 "Введите описание переменных:");
-            AddBlock("Решение", "\xE7EC", "Блок условного оператора", BlockType.Decision,
-                "Решение\n<Логическое выражение>\nПримеры: x > 0; a == b; (x > 5) && (y < 10)",
-                "Введите логическое выражение:");
-            AddBlock("Массивы", "\xE8FD", "Объявление векторов и матриц", BlockType.ArrayDeclaration,
+            AddBlock("Массивы", "\x25A3", "Объявление векторов и матриц", BlockType.ArrayDeclaration,
                 "Массивы\nВектор: <Тип> <Имя>[<Размер>]\nМатрица: <Тип> <Имя>[<Строки>][<Столбцы>]\nПримеры: int arr[10]; double matrix[5][5]",
                 "Введите объявление массива:");
-            AddBlock("Пока", "\xE895", "Цикл с предусловием (while)", BlockType.While,
+            AddBlock("Решение", "\x25C7", "Блок условного оператора", BlockType.Decision,
+                "Решение\n<Логическое выражение>\nПримеры: x > 0; a == b; (x > 5) && (y < 10)",
+                "Введите логическое выражение:");
+            AddBlock("Пока", "\x25C7", "Цикл с предусловием (while)", BlockType.While,
                 "Пока\n<Логическое выражение>\nВыполняется пока условие истинно\nПримеры: i < 10; x != 0",
                 "Введите логическое выражение:");
-            AddBlock("Делай", "\xE895", "Цикл с постусловием (do-while)", BlockType.DoWhile,
+            AddBlock("Делай", "\x25C7", "Цикл с постусловием (do-while)", BlockType.DoWhile,
                 "Делай-Пока\n<Логическое выражение>\nВыполняется до тех пор, пока условие истинно\nПримеры: choice != 0; continue == true",
                 "Введите логическое выражение:");
-            AddBlock("Подготовка", "\xE895", "Цикл со счётчиком (for)", BlockType.For,
+            AddBlock("Подготовка", "\x2B21", "Цикл со счётчиком (for)", BlockType.For,
                 "Подготовка (for)\n<Переменная> от <Начальное значение> до <Конечное значение> шаг <Приращение>\nПримеры: i от 1 до 10 шаг 1; x от 0 до 100 шаг 5",
                 "Введите параметры цикла:");
-            AddBlock("Ввод", "\xE8A5", "Блок ввода данных", BlockType.Input,
+            AddBlock("Ввод", "\x25B1", "Блок ввода данных", BlockType.Input,
                 "Ввод\n<Список переменных через запятую>\nПримеры: x, y, z; name, age",
                 "Введите список ввода:");
-            AddBlock("Вывод", "\xE8A5", "Блок вывода данных", BlockType.Output,
+            AddBlock("Вывод", "\x25B1", "Блок вывода данных", BlockType.Output,
                 "Вывод\n<Список выражений через запятую>\nПримеры: x, y; \"Результат:\", result; a + b",
                 "Введите список вывода:");
+
             SetupBlockDragAndDrop();
         }
-
         #region Split Panel Handlers
 
         private void LeftSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -285,16 +305,16 @@ namespace Blocks_
             SaveState();
 
             if (templateBlock.Type == BlockType.While)
-                CreateWhileLoopStructureInViewport();
+                CreateWhileLoopStructureInViewport(templateBlock.Shot, templateBlock.Docs);
             if (templateBlock.Type == BlockType.DoWhile)
             {
-                CreateDoWhileLoopStructureInViewport();
+                CreateDoWhileLoopStructureInViewport(templateBlock.Shot, templateBlock.Docs);
                 return;
             }
 
             if (templateBlock.Type == BlockType.For)
             {
-                CreateForLoopStructureInViewport();
+                CreateForLoopStructureInViewport(templateBlock.Docs, templateBlock.Shot);
                 return;
             }
             if (templateBlock.Type == BlockType.Start || templateBlock.Type == BlockType.End)
@@ -325,9 +345,11 @@ namespace Blocks_
 
             var newBlock = new BlockItem
             {
-                Name = $"{templateBlock.Name} {blockCounter}",
+                Name = $"{templateBlock.Name}",
                 Icon = templateBlock.Icon,
                 Description = templateBlock.Description,
+                Shot = templateBlock.Shot,
+                Docs = templateBlock.Docs,
                 Type = templateBlock.Type,
                 Id = Guid.NewGuid()
             };
@@ -352,8 +374,8 @@ namespace Blocks_
             }
 
             targetNode.OccupiedBy = newBlock;
-            newBlock.CanvasLeft = targetNode.Column * GRID_STEP;
-            newBlock.CanvasTop = targetNode.Row * GRID_STEP;
+            newBlock.CanvasLeft = targetNode.Column * SettingsWindow.AppSettings.GridStep;
+            newBlock.CanvasTop = targetNode.Row * SettingsWindow.AppSettings.GridStep;
             newBlock.GridPosition = targetNode;
 
             if (newBlock.Type == BlockType.Start) startBlock = newBlock;
@@ -376,6 +398,7 @@ namespace Blocks_
             listofblocks.Add(newBlock);
 
             HighlightAvailableCells();
+            UpdateStatusBar();
         }
 
 
@@ -859,7 +882,7 @@ namespace Blocks_
 
             if (this.Content is FrameworkElement rootElement)
                 rootElement.RequestedTheme = elementTheme;
-
+            UpdateTitleBarColors(elementTheme);
             Color color = accentColor switch
             {
                 "Blue" => Color.FromArgb(255, 0, 120, 215),
@@ -876,6 +899,25 @@ namespace Blocks_
                     Application.Current.Resources["SystemAccentColor"] = color;
             }
             catch { }
+
+            DrawGrid();
         }
+
+        private void UpdateTitleBarColors(ElementTheme theme)
+        {
+            if (theme == ElementTheme.Light)
+            {
+                this.AppWindow.TitleBar.ButtonForegroundColor = Colors.Black;
+                this.AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.Black;
+                this.AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.Black;
+            }
+            else
+            {
+                this.AppWindow.TitleBar.ButtonForegroundColor = Colors.White;
+                this.AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.White;
+                this.AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.White;
+            }
+        }
+
     }
 }

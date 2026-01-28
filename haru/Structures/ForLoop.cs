@@ -10,7 +10,7 @@ namespace Blocks_
 {
     public sealed partial class MainWindow : Window
     {
-        public void CreateForLoopStructureInViewport()
+        public void CreateForLoopStructureInViewport(string docs, string shot)
         {
             SaveState();
 
@@ -46,9 +46,11 @@ namespace Blocks_
             var loopBlock = new BlockItem
             {
                 Type = BlockType.For,
-                Name = $"Подготовка {blockCounter}",
+                Name = $"Подготовка",
                 Description = "Цикл 'FOR'",
                 Id = Guid.NewGuid(),
+                Docs = docs,
+                Shot = shot,
                 CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
                 CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
@@ -96,27 +98,17 @@ namespace Blocks_
             Canvas.SetTop(connectorBorder, connectorBlock.CanvasTop);
             BlocksCanvas.Children.Add(connectorBorder);
 
-            // FOR(TrueBranch) → тело
             CreateManualConnection(loopBlock, connectorBlock, ConnectionType.TrueBranch);
-
-            // тело(Normal) → FOR (инкремент)
             CreateManualConnection(connectorBlock, loopBlock, ConnectionType.Normal);
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification(
-                $"Структура FOR создана в области видимости:\n" +
-                $"- Условие: {loopBlock.Name}\n" +
-                $"- Тело: {connectorBlock.Name}"
-            );
         }
 
-        public void CreateForLoopStructure(double startX, double startY)
+        public void CreateForLoopStructure(double startX, double startY, string shot, string docs)
         {
             SaveState();
 
-            // 1. Вычисляем координаты сетки для блока условия (ромб FOR)
             int loopCol = (int)Math.Round(startX / (double)SettingsWindow.AppSettings.GridStep);
             int loopRow = (int)Math.Round(startY / (double)SettingsWindow.AppSettings.GridStep);
 
@@ -156,14 +148,15 @@ namespace Blocks_
                 }
             }
 
-            // 3. Создаем блок FOR
             blockCounter++;
             var loopBlock = new BlockItem
             {
                 Type = BlockType.For,
-                Name = $"Подготовка {blockCounter}",
+                Name = $"Подготовка",
                 Description = "Цикл 'FOR'",
                 Id = Guid.NewGuid(),
+                Shot = shot,
+                Docs = docs,
                 CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
                 CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
@@ -184,7 +177,6 @@ namespace Blocks_
             Canvas.SetTop(loopBorder, loopBlock.CanvasTop);
             BlocksCanvas.Children.Add(loopBorder);
 
-            // 4. Создаем тело цикла (connector)
             var connectorBlock = new BlockItem
             {
                 Type = BlockType.LoopConnector,
@@ -218,13 +210,6 @@ namespace Blocks_
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification(
-                $"Структура цикла FOR создана:\n" +
-                $"- Условие: {loopBlock.Name}\n" +
-                $"- Тело: {connectorBlock.Name}\n\n" +
-                $"True → тело\nFalse → выход\nТело → FOR (инкремент)"
-            );
         }
 
     }

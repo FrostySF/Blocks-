@@ -185,7 +185,7 @@ namespace Blocks_
                 while (tempStack.Count > 0)
                     undoStack.Push(tempStack.Pop());
             }
-
+            UpdateStatusBar();
             redoStack.Clear();
         }
 
@@ -257,8 +257,8 @@ namespace Blocks_
                 else if (block.Type == BlockType.End)
                     endBlock = block;
 
-                int col = (int)Math.Round(block.CanvasLeft / (double)GRID_STEP);
-                int row = (int)Math.Round(block.CanvasTop / (double)GRID_STEP);
+                int col = (int)Math.Round(block.CanvasLeft / (double)SettingsWindow.AppSettings.GridStep);
+                int row = (int)Math.Round(block.CanvasTop / (double)SettingsWindow.AppSettings.GridStep);
                 row = Math.Max(0, Math.Min(GRID_ROWS - 1, row));
                 col = Math.Max(0, Math.Min(GRID_COLUMNS - 1, col));
 
@@ -351,6 +351,19 @@ namespace Blocks_
                 return;
             }
 
+            bool startExists = listofblocks.Any(b => b.Type == BlockType.Start);
+            bool endExists = listofblocks.Any(b => b.Type == BlockType.End);
+
+            bool clipboardHasStart = clipboard.Any(b => b.Type == BlockType.Start);
+            bool clipboardHasEnd = clipboard.Any(b => b.Type == BlockType.End);
+
+            if ((startExists && clipboardHasStart) || (endExists && clipboardHasEnd))
+            {
+                string conflict = (startExists && clipboardHasStart) ? "Начало" : "Конец";
+                ShowNotification($"Вставка невозможна: блок '{conflict}' уже существует на холсте.");
+                return;
+            }
+
             SaveState();
             ClearSelection();
 
@@ -379,8 +392,8 @@ namespace Blocks_
                 }
 
                 targetNode.OccupiedBy = newBlock;
-                newBlock.CanvasLeft = targetNode.Column * GRID_STEP;
-                newBlock.CanvasTop = targetNode.Row * GRID_STEP;
+                newBlock.CanvasLeft = targetNode.Column * SettingsWindow.AppSettings.GridStep;
+                newBlock.CanvasTop = targetNode.Row * SettingsWindow.AppSettings.GridStep;
                 newBlock.GridPosition = targetNode;
 
                 Border border = DrawBlock.GetBlock(newBlock);

@@ -20,11 +20,13 @@ namespace Blocks_
             this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             this.AppWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             this.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            this.AppWindow.TitleBar.ButtonForegroundColor = Colors.White;
+
             var windowSize = new Windows.Graphics.SizeInt32(600, 700);
             this.AppWindow.Resize(windowSize);
 
             LoadSettings();
+            ApplyCurrentTheme();
+
             PanningSensitivitySlider.ValueChanged += (s, e) =>
             {
                 PanningSensitivityValue.Text = e.NewValue.ToString("F1");
@@ -59,7 +61,7 @@ namespace Blocks_
             PanningSensitivitySlider.Value = GetSettingValue("PanningSensitivity", 3.5);
             PanningSensitivityValue.Text = PanningSensitivitySlider.Value.ToString("F1");
             ZoomStepNumberBox.Value = GetSettingValue("ZoomStep", 10.0);
-           // AnimationsToggle.IsOn = GetSettingValue("Animations", true);
+            // AnimationsToggle.IsOn = GetSettingValue("Animations", true);
 
             MaxUndoStepsNumberBox.Value = GetSettingValue("MaxUndoSteps", 50.0);
             AutoSaveToggle.IsOn = GetSettingValue("AutoSave", false);
@@ -70,6 +72,12 @@ namespace Blocks_
             MinSegmentLengthNumberBox.Value = GetSettingValue("MinSegmentLength", 10.0);
             ObstacleClearanceNumberBox.Value = GetSettingValue("ObstacleClearance", 15.0);
             //SmartRoutingToggle.IsOn = GetSettingValue("SmartRouting", true);
+        }
+
+        private void ApplyCurrentTheme()
+        {
+            string theme = GetSettingValue("Theme", "Dark");
+            ApplyTheme(theme);
         }
 
         private string GetSettingValue(string key, string defaultValue)
@@ -141,11 +149,11 @@ namespace Blocks_
             ShowGridToggle.IsOn = true;
 
             ThemeComboBox.SelectedIndex = 0;
-            AccentColorComboBox.SelectedIndex = 0; 
+            AccentColorComboBox.SelectedIndex = 0;
 
             PanningSensitivitySlider.Value = 3.5;
             ZoomStepNumberBox.Value = 10;
-           // AnimationsToggle.IsOn = true;
+            // AnimationsToggle.IsOn = true;
 
             MaxUndoStepsNumberBox.Value = 50;
             AutoSaveToggle.IsOn = false;
@@ -179,6 +187,27 @@ namespace Blocks_
             if (this.Content is FrameworkElement rootElement)
             {
                 rootElement.RequestedTheme = elementTheme;
+            }
+
+            // Обновляем цвета заголовка окна в зависимости от темы
+            UpdateTitleBarColors(elementTheme);
+        }
+
+        private void UpdateTitleBarColors(ElementTheme theme)
+        {
+            if (theme == ElementTheme.Light)
+            {
+                // Светлая тема - темные кнопки
+                this.AppWindow.TitleBar.ButtonForegroundColor = Colors.Black;
+                this.AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.Black;
+                this.AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.Black;
+            }
+            else
+            {
+                // Темная тема - светлые кнопки
+                this.AppWindow.TitleBar.ButtonForegroundColor = Colors.White;
+                this.AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.White;
+                this.AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.White;
             }
         }
 

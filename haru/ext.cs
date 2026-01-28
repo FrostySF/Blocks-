@@ -109,14 +109,36 @@ namespace Blocks_
                 e.Handled = true;
             }
         }
+        private ElementTheme GetCurrentTheme()
+        {
+            if (this.Content is FrameworkElement rootElement)
+            {
+                return rootElement.ActualTheme;
+            }
+            return ElementTheme.Default;
+        }
+
+        private Color GetGridColor()
+        {
+            var theme = GetCurrentTheme();
+
+            if (theme == ElementTheme.Light)
+            {
+                return Color.FromArgb(255, 0, 0, 0);
+            }
+            else
+            {
+                return Color.FromArgb(95, 95, 95, 95);
+            }
+        }
 
         private void DrawGrid(double step = 20, double thickness = 0.6)
         {
             GridCanvas.Children.Clear();
-
             double width = FlowchartCanvas.Width;
             double height = FlowchartCanvas.Height;
 
+            var gridColor = GetGridColor();
             for (double x = 0; x <= width; x += step)
             {
                 var line = new Line
@@ -125,7 +147,7 @@ namespace Blocks_
                     Y1 = 0,
                     X2 = x,
                     Y2 = height,
-                    Stroke = new SolidColorBrush(Color.FromArgb(95, 95, 95, 95)),
+                    Stroke = new SolidColorBrush(gridColor),
                     StrokeThickness = thickness,
                     Opacity = 0.12,
                     IsHitTestVisible = false
@@ -133,6 +155,7 @@ namespace Blocks_
                 GridCanvas.Children.Add(line);
             }
 
+            // Горизонтальные линии
             for (double y = 0; y <= height; y += step)
             {
                 var line = new Line
@@ -141,7 +164,7 @@ namespace Blocks_
                     Y1 = y,
                     X2 = width,
                     Y2 = y,
-                    Stroke = new SolidColorBrush(Color.FromArgb(95, 95, 95, 95)),
+                    Stroke = new SolidColorBrush(gridColor),
                     StrokeThickness = thickness,
                     Opacity = 0.12,
                     IsHitTestVisible = false
@@ -186,21 +209,22 @@ namespace Blocks_
             {
                 var rect = new Rectangle
                 {
-                    Width = GRID_STEP,
-                    Height = GRID_STEP,
+                    Width = SettingsWindow.AppSettings.GridStep,
+                    Height = SettingsWindow.AppSettings.GridStep,
                     Stroke = new SolidColorBrush(Color.FromArgb(160, 144, 238, 144)),
                     StrokeThickness = 1,
                     Opacity = 0.25,
                     IsHitTestVisible = false
                 };
-                Canvas.SetLeft(rect, node.Column * GRID_STEP);
-                Canvas.SetTop(rect, node.Row * GRID_STEP);
+                Canvas.SetLeft(rect, node.Column * SettingsWindow.AppSettings.GridStep);
+                Canvas.SetTop(rect, node.Row * SettingsWindow.AppSettings.GridStep);
                 GridCanvas.Children.Add(rect);
                 gridHighlights.Add(rect);
             }
         }
         private void DeleteBlock(Border blockControl)
         {
+            SaveState();
             if (blockControl.Tag is BlockItem block)
             {
                 var incomingConnections = connectionLines.Where(cl => cl.ToBlock == block).ToList();
@@ -244,6 +268,7 @@ namespace Blocks_
                 BuildSyntaxTree();
                 HighlightAvailableCells();
             }
+            UpdateStatusBar();
         }
 
         public async Task LoadFlowchartFromFile(StorageFile file)
@@ -283,8 +308,8 @@ namespace Blocks_
                     else if (block.Type == BlockType.End)
                         endBlock = block;
 
-                    int col = (int)Math.Round(block.CanvasLeft / (double)GRID_STEP);
-                    int row = (int)Math.Round(block.CanvasTop / (double)GRID_STEP);
+                    int col = (int)Math.Round(block.CanvasLeft / (double)SettingsWindow.AppSettings.GridStep);
+                    int row = (int)Math.Round(block.CanvasTop / (double)SettingsWindow.AppSettings.GridStep);
 
                     row = Math.Max(0, Math.Min(GRID_ROWS - 1, row));
                     col = Math.Max(0, Math.Min(GRID_COLUMNS - 1, col));
@@ -413,18 +438,13 @@ namespace Blocks_
                 HighlightAvailableCells();
                 BuildSyntaxTree();
 
-                ShowNotification($"Блок-схема успешно загружена из: {file.Name}\n\n" +
-                                $"Блоков: {loadedData.Blocks.Count}\n" +
-                                $"Соединений загружено: {loadedConnections}\n" +
-                                $"Соединений пропущено: {skippedConnections}");
+                ShowNotification($"Блок-схема успешно загружена из: {file.Name}");
             }
             catch (Exception ex)
             {
                 ShowNotification($"Не удалось загрузить блок-схему:\n{ex.Message}\n\nПроверьте формат файла.");
             }
         }
-
-
 
         private void FlowchartCanvas_DragOver(object sender, DragEventArgs e)
         {
@@ -514,18 +534,18 @@ namespace Blocks_
 
             if (templateBlock.Type == BlockType.While)
             {
-                CreateWhileLoopStructure(x, y);
+                CreateWhileLoopStructure(x, y, templateBlock.Shot, templateBlock.Docs);
                 return;
             }
             if (templateBlock.Type == BlockType.DoWhile)
             {
-                CreateDoWhileLoopStructure(x, y);
+                CreateDoWhileLoopStructure(x, y, templateBlock.Shot, templateBlock.Docs);
                 return;
             }
 
             if (templateBlock.Type == BlockType.For)
             {
-                CreateForLoopStructure(x, y);
+                CreateForLoopStructure(x, y, templateBlock.Shot, templateBlock.Docs);
                 return;
             }
 
@@ -556,16 +576,18 @@ namespace Blocks_
 
             var newBlock = new BlockItem
             {
-                Name = $"{templateBlock.Name} {blockCounter}",
+                Name = $"{templateBlock.Name}",
                 Icon = templateBlock.Icon,
                 Description = templateBlock.Description,
+                Docs = templateBlock.Docs,
+                Shot = templateBlock.Shot,
                 Type = templateBlock.Type,
                 Id = Guid.NewGuid()
             };
 
 
-            int col = (int)Math.Round(x / (double)GRID_STEP);
-            int row = (int)Math.Round(y / (double)GRID_STEP);
+            int col = (int)Math.Round(x / (double)SettingsWindow.AppSettings.GridStep);
+            int row = (int)Math.Round(y / (double)SettingsWindow.AppSettings.GridStep);
 
             row = Math.Max(0, Math.Min(GRID_ROWS - 1, row));
             col = Math.Max(0, Math.Min(GRID_COLUMNS - 1, col));
@@ -595,8 +617,8 @@ namespace Blocks_
             }
 
             targetNode.OccupiedBy = newBlock;
-            newBlock.CanvasLeft = targetNode.Column * GRID_STEP;
-            newBlock.CanvasTop = targetNode.Row * GRID_STEP;
+            newBlock.CanvasLeft = targetNode.Column * SettingsWindow.AppSettings.GridStep;
+            newBlock.CanvasTop = targetNode.Row * SettingsWindow.AppSettings.GridStep;
             newBlock.GridPosition = targetNode;
             Rect blockRect = new Rect(newBlock.CanvasLeft, newBlock.CanvasTop, 100, 60);
             ConnectionLine lineToInsertInto = null;
@@ -657,6 +679,7 @@ namespace Blocks_
 
             HighlightAvailableCells();
             UpdateConnectionLines(newBlock);
+            UpdateStatusBar();
         }
 
         private void ScrollToBlock(BlockItem blockItem)

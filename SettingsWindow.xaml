@@ -20,31 +20,31 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" 
-                Background="#1A1A1A" 
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                 Padding="20,15">
             <TextBlock Text="Настройки" 
                        FontSize="20" 
                        FontWeight="SemiBold"
-                       Foreground="White"/>
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
         </Border>
 
         <ScrollViewer Grid.Row="1" Padding="10">
             <StackPanel Spacing="20">
 
-                <Border Background="#1A1A1A" 
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="8" 
                         Padding="15"
-                        BorderBrush="#2A2A2A"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                     <StackPanel Spacing="15">
                         <TextBlock Text="Сетка и позиционирование" 
                                    FontSize="16" 
                                    FontWeight="SemiBold"
-                                   Foreground="#CCCCCC"/>
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Размер шага сетки (px):" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="GridStepNumberBox"
                                        Value="100"
@@ -57,7 +57,7 @@
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Радиус подсветки соседних ячеек:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="HighlightRadiusNumberBox"
                                        Value="1"
@@ -74,20 +74,20 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="#1A1A1A" 
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="8" 
                         Padding="15"
-                        BorderBrush="#2A2A2A"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                     <StackPanel Spacing="15">
                         <TextBlock Text="Отображение" 
                                    FontSize="16" 
                                    FontWeight="SemiBold"
-                                   Foreground="#CCCCCC"/>
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Тема приложения:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <ComboBox x:Name="ThemeComboBox"
                                       HorizontalAlignment="Stretch"
@@ -100,7 +100,7 @@
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Цвет акцента:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <ComboBox x:Name="AccentColorComboBox"
                                       HorizontalAlignment="Stretch">
@@ -114,7 +114,7 @@
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Чувствительность панорамирования:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <Slider x:Name="PanningSensitivitySlider"
                                     Minimum="1"
@@ -125,14 +125,14 @@
                                     TickPlacement="BottomRight"/>
                             <TextBlock x:Name="PanningSensitivityValue"
                                        Text="3.5"
-                                       Foreground="#666666"
+                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                        FontSize="12"
                                        HorizontalAlignment="Right"/>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Шаг масштабирования (%):" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="ZoomStepNumberBox"
                                        Value="10"
@@ -143,20 +143,20 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="#1A1A1A" 
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="8" 
                         Padding="15"
-                        BorderBrush="#2A2A2A"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                     <StackPanel Spacing="15">
                         <TextBlock Text="Поведение" 
                                    FontSize="16" 
                                    FontWeight="SemiBold"
-                                   Foreground="#CCCCCC"/>
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Максимум шагов отмены:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="MaxUndoStepsNumberBox"
                                        Value="50"
@@ -174,7 +174,7 @@
 
                         <StackPanel Spacing="8" Visibility="{x:Bind AutoSaveToggle.IsOn, Mode=OneWay}">
                             <TextBlock Text="Интервал автосохранения (мин):" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="AutoSaveIntervalNumberBox"
                                        Value="5"
@@ -197,20 +197,20 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="#1A1A1A" 
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                         CornerRadius="8" 
                         Padding="15"
-                        BorderBrush="#2A2A2A"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                     <StackPanel Spacing="15">
                         <TextBlock Text="Соединения" 
                                    FontSize="16" 
                                    FontWeight="SemiBold"
-                                   Foreground="#CCCCCC"/>
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Минимальная длина сегмента:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="MinSegmentLengthNumberBox"
                                        Value="10"
@@ -221,7 +221,7 @@
 
                         <StackPanel Spacing="8">
                             <TextBlock Text="Отступ от препятствий:" 
-                                       Foreground="#999999"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        FontSize="13"/>
                             <NumberBox x:Name="ObstacleClearanceNumberBox"
                                        Value="15"
@@ -236,9 +236,9 @@
         </ScrollViewer>
 
         <Border Grid.Row="2" 
-                Background="#1A1A1A" 
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
                 Padding="20,15"
-                BorderBrush="#2A2A2A"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" 
                         HorizontalAlignment="Right"

@@ -131,9 +131,6 @@ namespace Blocks_.Core.Services
             return expr;
         }
 
-        /// <summary>
-        /// Простое вычисление без предобработки массивов (для индексов)
-        /// </summary>
         private double EvaluateSimple(string expression)
         {
             if (string.IsNullOrWhiteSpace(expression))

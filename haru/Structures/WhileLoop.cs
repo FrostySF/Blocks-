@@ -8,7 +8,7 @@ namespace Blocks_
 {
     public sealed partial class MainWindow : Window
     {
-        public void CreateWhileLoopStructure(double startX, double startY)
+        public void CreateWhileLoopStructure(double startX, double startY, string shot, string docs)
         {
             SaveState();
 
@@ -51,14 +51,15 @@ namespace Blocks_
                 }
             }
 
-            // 3. Создаем блок условия
             blockCounter++;
             var loopBlock = new BlockItem
             {
                 Type = BlockType.While,
-                Name = $"Пока {blockCounter}",
+                Name = $"Пока",
                 Description = "Условие цикла 'ПОКА'",
                 Id = Guid.NewGuid(),
+                Docs = docs,
+                Shot = shot,
                 CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
                 CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
@@ -111,11 +112,9 @@ namespace Blocks_
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification($"Структура цикла WHILE создана:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nДа (вниз) → тело\nНет (вправо) → выход\nОбратная связь → слева");
         }
 
-        public void CreateWhileLoopStructureInViewport()
+        public void CreateWhileLoopStructureInViewport(string shot, string docs)
         {
             SaveState();
             GridNode loopNode = FindFirstFreeGridNodeInViewport();
@@ -150,9 +149,11 @@ namespace Blocks_
             var loopBlock = new BlockItem
             {
                 Type = BlockType.While,
-                Name = $"Пока {blockCounter}",
+                Name = $"Пока",
                 Description = "Условие цикла 'ПОКА'",
                 Id = Guid.NewGuid(),
+                Shot = shot,
+                Docs = docs,
                 CanvasLeft = loopNode.Column * SettingsWindow.AppSettings.GridStep,
                 CanvasTop = loopNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = loopNode
@@ -206,8 +207,6 @@ namespace Blocks_
 
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification($"Структура цикла WHILE создана в области видимости:\n- Условие: {loopBlock.Name}\n- Соединитель: {connectorBlock.Name}\n\nДобавляйте блоки между условием и соединителем!");
         }
     }
 }

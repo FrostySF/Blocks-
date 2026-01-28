@@ -205,7 +205,7 @@ namespace Blocks_
             // Поздний поворот
             var lateRoute = horizontalFirst
                  ? BuildHVHRoute(start, end, deltaX * 0.70, deltaY)
-                 : BuildVHVRoute(start, end, deltaX, deltaY * 0.60);
+                 : BuildVHVRoute(start, end, deltaX, deltaY);
             candidates.Add((lateRoute, ScoreRoute(lateRoute)));
 
             // широкий обход

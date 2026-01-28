@@ -37,11 +37,11 @@ namespace Blocks_
             var _startBlock = new BlockItem
             {
                 Type = BlockType.Start,
-                Name = $"Начало {blockCounter}",
+                Name = $"Начало",
                 Description = "Начало выполнения программы",
                 Id = Guid.NewGuid(),
-                CanvasLeft = startNode.Column * GRID_STEP,
-                CanvasTop = startNode.Row * GRID_STEP,
+                CanvasLeft = startNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = startNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = startNode
             };
 
@@ -63,11 +63,11 @@ namespace Blocks_
             var _endBlock = new BlockItem
             {
                 Type = BlockType.End,
-                Name = $"Конец {blockCounter}",
+                Name = $"Конец",
                 Description = "Конец выполнения программы",
                 Id = Guid.NewGuid(),
-                CanvasLeft = endNode.Column * GRID_STEP,
-                CanvasTop = endNode.Row * GRID_STEP,
+                CanvasLeft = endNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = endNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = endNode
             };
             endNode.OccupiedBy = _endBlock;
@@ -87,8 +87,6 @@ namespace Blocks_
             CreateManualConnection(_startBlock, _endBlock, ConnectionType.Normal);
             HighlightAvailableCells();
             BuildSyntaxTree();
-
-            ShowNotification($"Структура Begin/End создана:\n- Начало: {_startBlock.Name}\n- Конец: {_endBlock.Name}");
         }
 
 
@@ -96,8 +94,8 @@ namespace Blocks_
         {
             SaveState();
 
-            int startCol = (int)Math.Round(startX / (double)GRID_STEP);
-            int startRow = (int)Math.Round(startY / (double)GRID_STEP);
+            int startCol = (int)Math.Round(startX / (double)SettingsWindow.AppSettings.GridStep);
+            int startRow = (int)Math.Round(startY / (double)SettingsWindow.AppSettings.GridStep);
             startRow = Math.Max(0, Math.Min(GRID_ROWS - 1, startRow));
             startCol = Math.Max(0, Math.Min(GRID_COLUMNS - 1, startCol));
 
@@ -128,11 +126,11 @@ namespace Blocks_
             var _startBlock = new BlockItem
             {
                 Type = BlockType.Start,
-                Name = $"Начало {blockCounter}",
+                Name = $"Начало",
                 Description = "Начало выполнения программы",
                 Id = Guid.NewGuid(),
-                CanvasLeft = startNode.Column * GRID_STEP,
-                CanvasTop = startNode.Row * GRID_STEP,
+                CanvasLeft = startNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = startNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = startNode
             };
 
@@ -156,11 +154,11 @@ namespace Blocks_
             var _endBlock = new BlockItem
             {
                 Type = BlockType.End,
-                Name = $"Конец {blockCounter}",
+                Name = $"Конец",
                 Description = "Конец выполнения программы",
                 Id = Guid.NewGuid(),
-                CanvasLeft = endNode.Column * GRID_STEP,
-                CanvasTop = endNode.Row * GRID_STEP,
+                CanvasLeft = endNode.Column * SettingsWindow.AppSettings.GridStep,
+                CanvasTop = endNode.Row * SettingsWindow.AppSettings.GridStep,
                 GridPosition = endNode
             };
 
@@ -181,7 +179,6 @@ namespace Blocks_
             CreateManualConnection(_startBlock, _endBlock, ConnectionType.Normal);
             HighlightAvailableCells();
             BuildSyntaxTree();
-            ShowNotification($"Структура Begin/End создана по координатам:\n- Начало: {_startBlock.Name}\n- Конец: {_endBlock.Name}");
         }
     }
 }

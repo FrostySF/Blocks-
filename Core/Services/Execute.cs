@@ -112,47 +112,52 @@ namespace Blocks_
 
             foreach (var line in lines)
             {
-                var cleanLine = line.Trim().Replace(";", "");
+                var cleanLine = line.Trim();
                 if (string.IsNullOrWhiteSpace(cleanLine) || cleanLine.StartsWith("//"))
                     continue;
 
-                if (cleanLine.Contains("="))
+                var declarations = cleanLine.Split(',').Select(d => d.Trim()).Where(d => !string.IsNullOrWhiteSpace(d));
+
+                foreach (var declaration in declarations)
                 {
-                    var parts = cleanLine.Split('=', 2).Select(p => p.Trim()).ToArray();
-                    var varName = parts[0];
-                    var expr = parts[1];
-
-                    if (!IsIdentifier(varName))
+                    if (declaration.Contains("="))
                     {
-                        TraceTextBlock.Text += $"\n[Error] Некорректное имя переменной: {varName}";
-                        return false;
+                        var parts = declaration.Split('=', 2).Select(p => p.Trim()).ToArray();
+                        var varName = parts[0];
+                        var expr = parts[1];
+
+                        if (!IsIdentifier(varName))
+                        {
+                           AppendTraceMessage($"[Error] Некорректное имя переменной: {varName}");
+                            return false;
+                        }
+
+                        try
+                        {
+                            double val = evaluator.Evaluate(expr);
+                            variables[varName] = val;
+                            declaredVariables.Add(varName);
+                           AppendTraceMessage($"[Declare] {varName} = {val}");
+                        }
+                        catch (Exception ex)
+                        {
+                           AppendTraceMessage($"[Error] Ошибка инициализации {varName}: {ex.Message}");
+                            return false;
+                        }
                     }
-
-                    try
+                    else
                     {
-                        double val = evaluator.Evaluate(expr);
-                        variables[varName] = val;
+                        var varName = declaration;
+                        if (!IsIdentifier(varName))
+                        {
+                           AppendTraceMessage($"[Error] Некорректное имя: {varName}");
+                            return false;
+                        }
+
+                        variables[varName] = 0.0;
                         declaredVariables.Add(varName);
-                        TraceTextBlock.Text += $"\n[Declare] {varName} = {val}";
+                       AppendTraceMessage($"[Declare] {varName}");
                     }
-                    catch (Exception ex)
-                    {
-                        TraceTextBlock.Text += $"\n[Error] Ошибка инициализации {varName}: {ex.Message}";
-                        return false;
-                    }
-                }
-                else
-                {
-                    var varName = cleanLine;
-                    if (!IsIdentifier(varName))
-                    {
-                        TraceTextBlock.Text += $"\n[Error] Некорректное имя: {varName}";
-                        return false;
-                    }
-
-                    variables[varName] = 0.0;
-                    declaredVariables.Add(varName);
-                    TraceTextBlock.Text += $"\n[Declare] {varName}";
                 }
             }
             return true;
@@ -167,7 +172,7 @@ namespace Blocks_
 
                 if (!match.Success)
                 {
-                    TraceTextBlock.Text += $"\n[Error] Неверный формат массива: {code}";
+                   AppendTraceMessage($"[Error] Неверный формат массива: {code}");
                     return false;
                 }
 
@@ -178,7 +183,7 @@ namespace Blocks_
 
                 if (!IsIdentifier(arrayName))
                 {
-                    TraceTextBlock.Text += $"\n[Error] Некорректное имя массива: {arrayName}";
+                   AppendTraceMessage($"[Error] Некорректное имя массива: {arrayName}");
                     return false;
                 }
 
@@ -196,11 +201,11 @@ namespace Blocks_
                         if (rows > 0 && cols > 0)
                         {
                             matrices[arrayName] = new double[rows, cols];
-                            TraceTextBlock.Text += $"\n[Array] Матрица {arrayName}[{rows}][{cols}] инициализирована нулями";
+                           AppendTraceMessage($"[Array] Матрица {arrayName}[{rows}][{cols}] инициализирована нулями");
                         }
                         else
                         {
-                            TraceTextBlock.Text += $"\n[Error] Размеры матрицы должны быть указаны";
+                           AppendTraceMessage($"[Error] Размеры матрицы должны быть указаны");
                             declaredArrays.Remove(arrayName);
                             return false;
                         }
@@ -210,12 +215,12 @@ namespace Blocks_
                         var matrix = ParseMatrixValues(valuesStr, rows, cols);
                         if (matrix == null)
                         {
-                            TraceTextBlock.Text += $"\n[Error] Ошибка парсинга значений матрицы";
+                           AppendTraceMessage($"[Error] Ошибка парсинга значений матрицы");
                             declaredArrays.Remove(arrayName); 
                             return false;
                         }
                         matrices[arrayName] = matrix;
-                        TraceTextBlock.Text += $"\n[Array] Матрица {arrayName}[{rows}][{cols}] инициализирована";
+                       AppendTraceMessage($"[Array] Матрица {arrayName}[{rows}][{cols}] инициализирована");
                     }
                 }
                 else
@@ -228,11 +233,11 @@ namespace Blocks_
                         if (size > 0)
                         {
                             vectors[arrayName] = new double[size];
-                            TraceTextBlock.Text += $"\n[Array] Вектор {arrayName}[{size}] инициализирован нулями";
+                           AppendTraceMessage($"[Array] Вектор {arrayName}[{size}] инициализирован нулями");
                         }
                         else
                         {
-                            TraceTextBlock.Text += $"\n[Error] Размер вектора должен быть указан";
+                           AppendTraceMessage($"[Error] Размер вектора должен быть указан");
                             declaredArrays.Remove(arrayName); 
                             return false;
                         }
@@ -242,18 +247,18 @@ namespace Blocks_
                         var vector = ParseVectorValues(valuesStr);
                         if (vector == null)
                         {
-                            TraceTextBlock.Text += $"\n[Error] Ошибка парсинга значений вектора";
+                           AppendTraceMessage($"[Error] Ошибка парсинга значений вектора");
                             declaredArrays.Remove(arrayName); 
                             return false;
                         }
 
                         if (size > 0 && vector.Length != size)
                         {
-                            TraceTextBlock.Text += $"\n[Warn] Размер не совпадает. Использован размер из значений: {vector.Length}";
+                           AppendTraceMessage($"[Warn] Размер не совпадает. Использован размер из значений: {vector.Length}");
                         }
 
                         vectors[arrayName] = vector;
-                        TraceTextBlock.Text += $"\n[Array] Вектор {arrayName}[{vector.Length}] инициализирован";
+                       AppendTraceMessage($"[Array] Вектор {arrayName}[{vector.Length}] инициализирован");
                     }
                 }
 
@@ -261,7 +266,7 @@ namespace Blocks_
             }
             catch (Exception ex)
             {
-                TraceTextBlock.Text += $"\n[Error] Ошибка при инициализации массива: {ex.Message}";
+               AppendTraceMessage($"[Error] Ошибка при инициализации массива: {ex.Message}");
                 return false;
             }
         }
@@ -329,11 +334,11 @@ namespace Blocks_
             if (node.Block.Type == BlockType.VariableDeclaration ||
                 node.Block.Type == BlockType.ArrayDeclaration)
             {
-                TraceTextBlock.Text += $"\n[{node.Block.Type}] Блок пропущен (инициализация) => {node.Block.Code}";
+               AppendTraceMessage($"[{node.Block.Type}] Блок пропущен (инициализация) => {node.Block.Code}");
                 return true;
             }
 
-            string code = node.Block.Code?.Trim(',') ?? "";
+            string code = node.Block.Code?.Trim() ?? "";
 
             var eval = new ArrayExpressionEvaluator(variables, declaredVariables,
                                                          vectors, matrices, declaredArrays);
@@ -347,7 +352,7 @@ namespace Blocks_
                         if (string.IsNullOrWhiteSpace(code))
                             return true;
                         double result = eval.Evaluate(code);
-                        TraceTextBlock.Text += $"\n[{node.Block.Type}] {code} → {(result != 0 ? "true" : "false")}";
+                       AppendTraceMessage($"[{node.Block.Type}] {code} → {(result != 0 ? "true" : "false")}");
                         return result != 0;
 
                     case BlockType.Process:
@@ -360,7 +365,7 @@ namespace Blocks_
                         else
                         {
                             double val = eval.Evaluate(code);
-                            TraceTextBlock.Text += $"\n{code} → {val}";
+                           AppendTraceMessage($"{code} → {val}");
                         }
                         break;
 
@@ -373,26 +378,112 @@ namespace Blocks_
                     case BlockType.Input:
                         if (string.IsNullOrWhiteSpace(code))
                         {
-                            TraceTextBlock.Text += $"\n[Error] Блок ввода пустой";
+                           AppendTraceMessage($"[Error] Блок ввода пустой");
                             return false;
                         }
-                        if (declaredArrays.Contains(code))
+                        var inputVars = code.Split(',')
+                                            .Select(s => s.Trim())
+                                            .Where(s => !string.IsNullOrEmpty(s))
+                                            .ToList();
+                        if (inputVars.Count > 1)
                         {
-                            var task = InputArrayShow(code);
+                            var task = InputMultipleShow(node.Block, inputVars);
                         }
-                        else if (declaredVariables.Contains(code))
+                        else if (inputVars.Count == 1)
                         {
-                            var task = InputShow(node.Block);
-                        }
-                        else
-                        {
-                            TraceTextBlock.Text += $"\n[Error] '{code}' не объявлена";
-                            return false;
+                            string singleCode = inputVars[0];
+                            var inputIndexPattern = @"(\w+)\[(.+?)\](\[(.+?)\])?";
+                            var inputMatch = Regex.Match(singleCode, inputIndexPattern);
+
+                            if (inputMatch.Success)
+                            {
+                                // Ввод в элемент массива: arr[i] или matrix[i][j]
+                                string arrayName = inputMatch.Groups[1].Value;
+                                string index1Expr = inputMatch.Groups[2].Value;
+                                string index2Expr = inputMatch.Groups[4].Value;
+
+                                if (!declaredArrays.Contains(arrayName))
+                                {
+                                    AppendTraceMessage($"[Error] Массив '{arrayName}' не объявлен");
+                                    return false;
+                                }
+
+                                try
+                                {
+                                    int index1 = (int)eval.Evaluate(index1Expr);
+
+                                    if (!string.IsNullOrEmpty(index2Expr))
+                                    {
+                                        // Ввод в элемент матрицы
+                                        int index2 = (int)eval.Evaluate(index2Expr);
+
+                                        if (matrices.TryGetValue(arrayName, out var matrix))
+                                        {
+                                            if (index1 >= 0 && index1 < matrix.GetLength(0) &&
+                                                index2 >= 0 && index2 < matrix.GetLength(1))
+                                            {
+                                                var task = InputArrayElementShow(arrayName, index1, index2, matrix[index1, index2]);
+                                            }
+                                            else
+                                            {
+                                                AppendTraceMessage($"[Error] Индекс вне диапазона: {arrayName}[{index1}][{index2}]");
+                                                return false;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            AppendTraceMessage($"[Error] Матрица '{arrayName}' не найдена");
+                                            return false;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Ввод в элемент вектора
+                                        if (vectors.TryGetValue(arrayName, out var vector))
+                                        {
+                                            if (index1 >= 0 && index1 < vector.Length)
+                                            {
+                                                var task = InputArrayElementShow(arrayName, index1, -1, vector[index1]);
+                                            }
+                                            else
+                                            {
+                                                AppendTraceMessage($"[Error] Индекс вне диапазона: {arrayName}[{index1}]");
+                                                return false;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            AppendTraceMessage($"[Error] Вектор '{arrayName}' не найден");
+                                            return false;
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    AppendTraceMessage($" [Error] Ошибка при вычислении индекса: {ex.Message}");
+                                    return false;
+                                }
+                            }
+                            else if (declaredArrays.Contains(singleCode))
+                            {
+                                // Ввод всего массива
+                                var task = InputArrayShow(singleCode);
+                            }
+                            else if (declaredVariables.Contains(singleCode))
+                            {
+                                // Ввод обычной переменной
+                                var task = InputShow(node.Block);
+                            }
+                            else
+                            {
+                                AppendTraceMessage($"[Error] '{singleCode}' не объявлена");
+                                return false;
+                            }
                         }
                         break;
 
                     case BlockType.DoWhile:
-                        TraceTextBlock.Text += $"\n[DO-WHILE] Вход в тело цикла !!!";
+                       AppendTraceMessage($"[DO-WHILE] Вход в тело цикла !!!");
                         return true; 
                     case BlockType.For:
                         if (string.IsNullOrWhiteSpace(code))
@@ -401,7 +492,7 @@ namespace Blocks_
 
                         if (forParts.Length != 3)
                         {
-                            TraceTextBlock.Text += $"\n[Error] Неверный формат FOR: {code}. ";
+                           AppendTraceMessage($"[Error] Неверный формат FOR: {code}. ");
                             return false;
                         }
 
@@ -412,11 +503,11 @@ namespace Blocks_
                             ExecuteAssignment(init, eval);
                             forLoopInitialized[node.Block] = true;
                             ShowNotification("for loop");
-                            TraceTextBlock.Text += $"\n[FOR] Инициализация: {init}";
+                           AppendTraceMessage($"[FOR] Инициализация: {init}");
                         }
 
                         double condResult = eval.Evaluate(condition);
-                        TraceTextBlock.Text += $"\n[FOR] Условие: {condition} → {(condResult != 0 ? "true" : "false")}";
+                       AppendTraceMessage($"[FOR] Условие: {condition} → {(condResult != 0 ? "true" : "false")}");
 
                         if (condResult != 0)
                         {
@@ -441,12 +532,12 @@ namespace Blocks_
                                 {
                                     string step = forParts2[2];
                                     ExecuteAssignment(step, eval);
-                                    TraceTextBlock.Text += $"\n[FOR] Инкремент: {step}";
+                                   AppendTraceMessage($"[FOR] Инкремент: {step}");
                                 }
                             }
                             else if (loopBlock.Type == BlockType.While)
                             {
-                                TraceTextBlock.Text += $"\n[WHILE] Возврат к проверке условия";
+                               AppendTraceMessage($"[WHILE] Возврат к проверке условия");
                             }
                         }
                         return true;
@@ -462,7 +553,7 @@ namespace Blocks_
                             if (!string.IsNullOrWhiteSpace(doCondition))
                             {
                                 double doResult = eval.Evaluate(doCondition);
-                                TraceTextBlock.Text += $"\n[DO-WHILE] Условие: {doCondition} → {(doResult != 0 ? "true (повтор)" : "false (выход)")}";
+                               AppendTraceMessage($"[DO-WHILE] Условие: {doCondition} → {(doResult != 0 ? "true (повтор)" : "false (выход)")}");
                                 return doResult != 0; 
                             }
                         }
@@ -475,7 +566,7 @@ namespace Blocks_
             }
             catch (Exception ex)
             {
-                TraceTextBlock.Text += $"\nОшибка: {ex.Message}";
+               AppendTraceMessage($"Ошибка: {ex.Message}");
                 return false;
             }
         }
@@ -506,36 +597,74 @@ namespace Blocks_
         }
         private void ExecuteOutput(string code, ArrayExpressionEvaluator evaluator)
         {
-            if (declaredArrays.Contains(code))
+            if (string.IsNullOrWhiteSpace(code))
             {
-                if (vectors.TryGetValue(code, out var vector))
-                {
-                    var values = string.Join(", ", vector.Select(v => v.ToString("G5")));
-                    TraceTextBlock.Text += $"\n[Output] {code}[]: [{values}]";
-                }
-                else if (matrices.TryGetValue(code, out var matrix))
-                {
-                    var sb = new StringBuilder();
-                    sb.Append($"\n[Output] {code}[][]:");
-                    for (int i = 0; i < matrix.GetLength(0); i++)
-                    {
-                        sb.Append("\n  [");
-                        for (int j = 0; j < matrix.GetLength(1); j++)
-                        {
-                            sb.Append(matrix[i, j].ToString("G5"));
-                            if (j < matrix.GetLength(1) - 1)
-                                sb.Append(", ");
-                        }
-                        sb.Append("]");
-                    }
-                    TraceTextBlock.Text += sb.ToString();
-                }
+                AppendTraceMessage("[Output] Блок вывода пустой");
+                return;
             }
-            else
+            var outputItems = new List<string>();
+            string stringPattern = "\"([^\"]*)\"";
+            var stringMatches = Regex.Matches(code, stringPattern).Cast<Match>().ToList();
+            var tempCode = code;
+            var stringPlaceholders = new Dictionary<string, string>();
+            int placeholderIndex = 0;
+
+            foreach (var match in stringMatches)
             {
-                // Вывод выражения или переменной
-                double outVal = evaluator.Evaluate(code);
-                TraceTextBlock.Text += $"\n[Output]: {outVal}";
+                string placeholder = $"__STRING_LITERAL_{placeholderIndex}__";
+                stringPlaceholders.Add(placeholder, match.Groups[1].Value);
+                tempCode = tempCode.Replace(match.Value, placeholder);
+                placeholderIndex++;
+            }
+            var parts = tempCode.Split(',')
+                                .Select(p => p.Trim())
+                                .Where(p => !string.IsNullOrEmpty(p));
+            foreach (var part in parts)
+            {
+                string item = part;
+                if (stringPlaceholders.ContainsKey(item))
+                {
+                    outputItems.Add(stringPlaceholders[item]);
+                    continue;
+                }
+
+                if (declaredArrays.Contains(item))
+                {
+                    if (vectors.TryGetValue(item, out var vector))
+                    {
+                        var values = string.Join(", ", vector.Select(v => v.ToString("G5")));
+                        AppendTraceMessage($"[Output] {item}[]: [{values}]");
+                    }
+                    else if (matrices.TryGetValue(item, out var matrix))
+                    {
+                        var sb = new StringBuilder();
+                        sb.Append($"[Output] {item}[][]: ");
+                        for (int i = 0; i < matrix.GetLength(0); i++)
+                        {
+                            sb.Append(" [");
+                            for (int j = 0; j < matrix.GetLength(1); j++)
+                            {
+                                sb.Append(matrix[i, j].ToString("G5"));
+                                if (j < matrix.GetLength(1) - 1)
+                                    sb.Append(", ");
+                            }
+                            sb.Append("]");
+                        }
+                        AppendTraceMessage(sb.ToString());
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        double outVal = evaluator.Evaluate(item);
+                        AppendTraceMessage($"[Output] {item} → {outVal.ToString("G5")}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendTraceMessage($"[Error Output] Не удалось вычислить/вывести: {item} ({ex.Message})");
+                    }
+                }
             }
         }
 
@@ -560,10 +689,12 @@ namespace Blocks_
                 }
 
                 int index1 = (int)evaluator.Evaluate(index1Expr);
+
                 double value = evaluator.Evaluate(rightSide);
 
                 if (!string.IsNullOrEmpty(index2Expr))
                 {
+  
                     int index2 = (int)evaluator.Evaluate(index2Expr);
                     if (matrices.TryGetValue(arrayName, out var matrix))
                     {
@@ -571,7 +702,7 @@ namespace Blocks_
                             index2 >= 0 && index2 < matrix.GetLength(1))
                         {
                             matrix[index1, index2] = value;
-                            TraceTextBlock.Text += $"\n{arrayName}[{index1}][{index2}] = {value}";
+                           AppendTraceMessage($"{arrayName}[{index1}][{index2}] = {value}");
                         }
                         else
                         {
@@ -581,12 +712,13 @@ namespace Blocks_
                 }
                 else
                 {
+                    // vector
                     if (vectors.TryGetValue(arrayName, out var vector))
                     {
                         if (index1 >= 0 && index1 < vector.Length)
                         {
                             vector[index1] = value;
-                            TraceTextBlock.Text += $"\n{arrayName}[{index1}] = {value}";
+                           AppendTraceMessage($"{arrayName}[{index1}] = {value}");
                         }
                         else
                         {
@@ -600,19 +732,93 @@ namespace Blocks_
                 var varName = leftSide;
 
                 if (!declaredVariables.Contains(varName))
-                {
                     throw new InvalidOperationException($"Переменная '{varName}' не объявлена");
-                }
-
                 double val = evaluator.Evaluate(rightSide);
+
+                double oldValue = variables.ContainsKey(varName) ? variables[varName] : 0.0;
                 variables[varName] = val;
-                TraceTextBlock.Text += $"\n{varName} = {val}";
+
+               AppendTraceMessage($"{varName} = {val}");
             }
         }
 
+        private async Task InputArrayElementShow(string arrayName, int index1, int index2, double currentValue)
+        {
+            bool isMatrix = index2 >= 0;
+            string displayIndex = isMatrix ? $"[{index1}][{index2}]" : $"[{index1}]";
+
+            var descBox = new TextBox
+            {
+                Text = currentValue.ToString(),
+                PlaceholderText = "Введите значение",
+                AcceptsReturn = false
+            };
+
+            var panel = new StackPanel { Spacing = 10 };
+            var label = new TextBlock { Text = $"Введите значение для '{arrayName}{displayIndex}':" };
+            panel.Children.Add(label);
+            panel.Children.Add(descBox);
+           
+            var dialog = new ContentDialog
+            {
+                Title = $"Ввод элемента массива",
+                Content = panel,
+                PrimaryButtonText = "Сохранить",
+                CloseButtonText = "Отмена",
+                XamlRoot = Content.XamlRoot
+            };
+
+            bool isPrimaryResultSimulated = false;
+
+            descBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == Windows.System.VirtualKey.Enter)
+                {
+                    e.Handled = true;
+                    isPrimaryResultSimulated = true;
+                    dialog.Hide();
+                }
+            };
+
+            descBox.Loaded += (s, e) => descBox.Focus(FocusState.Keyboard);
+            descBox.SelectAll();
+
+            var result = await dialog.ShowAsync();
+
+            if (result == ContentDialogResult.Primary || isPrimaryResultSimulated)
+            {
+                if (double.TryParse(descBox.Text, out double value))
+                {
+                    if (isMatrix)
+                    {
+                        if (matrices.TryGetValue(arrayName, out var matrix))
+                        {
+                            double oldValue = matrix[index1, index2];
+                            matrix[index1, index2] = value;
+                           AppendTraceMessage($"[Input] {arrayName}[{index1}][{index2}] = {value}");
+                        }
+                    }
+                    else
+                    {
+                        if (vectors.TryGetValue(arrayName, out var vector))
+                        {
+                            double oldValue = vector[index1];
+                            vector[index1] = value;
+                           AppendTraceMessage($"[Input] {arrayName}[{index1}] = {value}");
+                        }
+                    }
+                   
+                }
+                else
+                {
+                   AppendTraceMessage($"[Error] Некорректное значение для {arrayName}{displayIndex}");
+                }
+                BlocksCanvas.Focus(FocusState.Keyboard);
+            }
+        }
         private async Task InputArrayShow(string arrayName)
         {
-            TraceTextBlock.Text += $"\n[Input Array] Запрос ввода массива: {arrayName}";
+            AppendTraceMessage($"[Input Array] Запрос ввода массива: {arrayName}");
 
             // Определяем тип массива
             bool isVector = vectors.ContainsKey(arrayName);
@@ -620,7 +826,7 @@ namespace Blocks_
 
             if (!isVector && !isMatrix)
             {
-                TraceTextBlock.Text += $"\n[Error] Массив {arrayName} не найден";
+               AppendTraceMessage($"[Error] Массив {arrayName} не найден");
                 return;
             }
 
@@ -724,7 +930,7 @@ namespace Blocks_
                     }
 
                     var values = string.Join(", ", vector.Select(v => v.ToString("G5")));
-                    TraceTextBlock.Text += $"\n[Input] {arrayName}[] = [{values}]";
+                   AppendTraceMessage($"[Input] {arrayName}[] = [{values}]");
                 }
             }
             else if (isMatrix)
@@ -851,10 +1057,10 @@ namespace Blocks_
                     }
 
                     var sb = new StringBuilder();
-                    sb.Append($"\n[Input] {arrayName}[][] =");
+                    sb.Append($"[Input] {arrayName}[][] =");
                     for (int i = 0; i < rows; i++)
                     {
-                        sb.Append("\n  [");
+                        sb.Append("  [");
                         for (int j = 0; j < cols; j++)
                         {
                             sb.Append(matrix[i, j].ToString("G5"));
@@ -866,6 +1072,107 @@ namespace Blocks_
                     TraceTextBlock.Text += sb.ToString();
                 }
             }
+        }
+
+        private async Task InputMultipleShow(BlockItem block, List<string> variableNames)
+        {
+            var mainPanel = new StackPanel { Spacing = 10, Orientation = Orientation.Vertical };
+            var inputBoxes = new Dictionary<string, TextBox>();
+            bool inputError = false;
+
+            foreach (var varName in variableNames)
+            {
+                if (!declaredVariables.Contains(varName))
+                {
+                    AppendTraceMessage($"[Error] Переменная '{varName}' не объявлена для ввода.");
+                    inputError = true;
+                    continue;
+                }
+
+                var rowPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 5, 0, 5) };
+                var label = new TextBlock
+                {
+                    Text = $"{varName}:",
+                    Width = 80,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var inputBox = new TextBox
+                {
+                    Text = variables.ContainsKey(varName) ? variables[varName].ToString() : "0.0",
+                    PlaceholderText = "Введите значение",
+                    Width = 150
+                };
+
+                inputBoxes.Add(varName, inputBox);
+                rowPanel.Children.Add(label);
+                rowPanel.Children.Add(inputBox);
+                mainPanel.Children.Add(rowPanel);
+            }
+
+            if (inputError || inputBoxes.Count == 0)
+            {
+                if (inputBoxes.Count == 0)
+                    AppendTraceMessage("[Error] Не найдено переменных для ввода.");
+                return;
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = $"Ввод переменных: {string.Join(", ", variableNames)}",
+                Content = mainPanel,
+                PrimaryButtonText = "Сохранить",
+                CloseButtonText = "Отмена",
+                XamlRoot = Content.XamlRoot
+            };
+
+            if (inputBoxes.Any())
+            {
+                inputBoxes.First().Value.Loaded += (s, e) => inputBoxes.First().Value.Focus(FocusState.Keyboard);
+
+                var boxList = inputBoxes.Values.ToList();
+                for (int i = 0; i < boxList.Count; i++)
+                {
+                    int currentIndex = i;
+                    boxList[i].KeyDown += (s, e) =>
+                    {
+                        if (e.Key == Windows.System.VirtualKey.Enter)
+                        {
+                            e.Handled = true;
+                            if (currentIndex + 1 < boxList.Count)
+                            {
+                                boxList[currentIndex + 1].Focus(FocusState.Keyboard);
+                                boxList[currentIndex + 1].SelectAll();
+                            }
+                        }
+                    };
+                }
+            }
+
+            var result = await dialog.ShowAsync();
+
+            if (result == ContentDialogResult.Primary)
+            {
+                foreach (var kvp in inputBoxes)
+                {
+                    var varName = kvp.Key;
+                    var inputBox = kvp.Value;
+
+                    if (double.TryParse(inputBox.Text, out double value))
+                    {
+                        double oldValue = variables.ContainsKey(varName) ? variables[varName] : 0.0;
+                        variables[varName] = value;
+                        LogVariableChange(block, varName, oldValue, value, "Ввод пользователя (множественный)");
+                        AppendTraceMessage($"[Input] {varName} = {value}");
+                    }
+                    else
+                    {
+                        AppendTraceMessage($"[Error] Некорректное значение для {varName}. Значение не изменено.");
+                    }
+                }
+            }
+
+            BlocksCanvas.Focus(FocusState.Keyboard);
         }
         #region TRACe!
         public async void ShowTraceResults()
@@ -940,7 +1247,7 @@ namespace Blocks_
             foreach (var entry in traceLog)
             {
                 AddCell(traceGrid, row, 0, entry.Step.ToString(), false, null, borderThickness);
-                AddCell(traceGrid, row, 1, $"{entry.BlockType}\n({entry.BlockCode})", false, null, borderThickness);
+                AddCell(traceGrid, row, 1, $"{entry.BlockType}({entry.BlockCode})", false, null, borderThickness);
                 AddCell(traceGrid, row, 2, entry.Variable, false, null, borderThickness);
                 AddCell(traceGrid, row, 3, $"{entry.OldValue.ToString("0.###")} → {entry.NewValue.ToString("0.###")}", false, null, borderThickness);
                 AddCell(traceGrid, row, 4, entry.Comment, false, null, borderThickness);
@@ -1047,11 +1354,11 @@ namespace Blocks_
                     double oldValue = variables.ContainsKey(block.Code) ? variables[block.Code] : 0.0;
                     variables[block.Code] = value;
                     LogVariableChange(block, block.Code, oldValue, value, "Ввод пользователя");
-                    TraceTextBlock.Text += $"\n[Input] {block.Code} = {value}";
+                   AppendTraceMessage($"[Input] {block.Code} = {value}");
                 }
                 else
                 {
-                    TraceTextBlock.Text += $"\n[Error] Некорректное значение для {block.Code}";
+                   AppendTraceMessage($"[Error] Некорректное значение для {block.Code}");
                 }
             }
         }

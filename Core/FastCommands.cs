@@ -40,6 +40,20 @@ namespace Blocks_
             return Math.Round(value / gridStep) * gridStep;
         }
 
+        public void AppendTraceMessage(string message)
+        {
+            TraceTextBlock.Text += $"\n{message}";
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TraceScrollViewer.ChangeView(
+                    horizontalOffset: null,
+                    verticalOffset: TraceScrollViewer.ScrollableHeight,
+                    zoomFactor: null,
+                    disableAnimation: true
+                );
+            });
+        }
+
         /// <summary>
         /// Генерирует форматированный текст отчета о трассировке для копирования в буфер обмена.
         /// </summary>
@@ -264,12 +278,13 @@ namespace Blocks_
             currentDebugNode = null;
             currentStepIndex = -1;
             executionOrder.Clear();
-
+           
             ClearBlockHighlights();
 
             if (undoStack != null) undoStack.Clear();
             if (redoStack != null) redoStack.Clear();
         }
+
 
         /// <summary>
         /// Создание новой блок-схемы с подтверждением
@@ -289,13 +304,14 @@ namespace Blocks_
             if (result == ContentDialogResult.Primary)
             {
                 ClearFlowchart();
-
+                currentFile = null;
                 blockCounter = 0;
                 InitializeVirtualGrid();
                 HighlightAvailableCells();
                 if (TraceTextBlock != null)
                     TraceTextBlock.Text = string.Empty;
-
+                UpdateStatusBar();
+                BlocksCanvas.Focus(FocusState.Keyboard);
                 ShowNotification("Создана новая блок-схема.");
             }
         }
@@ -305,44 +321,62 @@ namespace Blocks_
             var filePicker = new FileOpenPicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
-
             filePicker.FileTypeFilter.Add(".xml");
             filePicker.FileTypeFilter.Add(".prg");
-
             StorageFile file = await filePicker.PickSingleFileAsync();
+
             if (file != null)
             {
                 await LoadFlowchartFromFile(file);
+                currentFile = file;
+                UpdateStatusBar();
+            }
+        }
+        private async Task SaveFlowchartData(StorageFile file)
+        {
+            try
+            {
+                var dataToSave = new FlowchartData
+                {
+                    Blocks = new ObservableCollection<BlockItem>(this.listofblocks),
+                    Connections = this.connectionLines
+                };
+                await XmlDataSerializer.SaveToFileAsync(dataToSave, file);
+
+                currentFile = file;
+                UpdateStatusBar(); 
+
+                ShowNotification($"Блок-схема успешно сохранена в:\n{file.Name}");
+            }
+            catch (Exception ex)
+            {
+                ShowNotification($"Не удалось сохранить блок-схему:\n{ex.Message}");
             }
         }
 
-        private async void SaveFlowchart_Click(object sender, RoutedEventArgs e)
+        private async Task SaveAsFlowchart()
         {
             var filePicker = new FileSavePicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
-
             filePicker.FileTypeChoices.Add("Блок-схема XML", new List<string> { ".xml", ".prg" });
+            filePicker.SuggestedFileName = "НоваяБлокСхема.prg";
 
             StorageFile file = await filePicker.PickSaveFileAsync();
             if (file != null)
-            {
-                try
-                {
-                    var dataToSave = new FlowchartData
-                    {
-                        Blocks = new ObservableCollection<BlockItem>(this.listofblocks),
-                        Connections = this.connectionLines
-                    };
-                    await XmlDataSerializer.SaveToFileAsync(dataToSave, file);
+                await SaveFlowchartData(file);
+        }
+        private async void SaveAsFlowchart_Click(object sender, RoutedEventArgs e)
+        {
+            await SaveAsFlowchart();
+        }
 
-                    ShowNotification($"Блок-схема успешно сохранена в:\n{file.Path}\n\nБлоков: {listofblocks.Count}\nСоединений: {connectionLines.Count}");
-                }
-                catch (Exception ex)
-                {
-                    ShowNotification($"Не удалось сохранить блок-схему:\n{ex.Message}");
-                }
-            }
+        private async void SaveFlowchart_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentFile != null)
+                await SaveFlowchartData(currentFile);
+            else
+                await SaveAsFlowchart();
         }
 
         private void ShowBlockInfo(Border blockControl)
@@ -424,7 +458,7 @@ namespace Blocks_
             BuildSyntaxTree();
             if (!InitializeVariables())
             {
-                TraceTextBlock.Text += $"\n--- ОШИБКА ИНИЦИАЛИЗАЦИИ. ВЫПОЛНЕНИЕ ПРЕРВАНО. ---";
+               AppendTraceMessage($"\n--- ОШИБКА ИНИЦИАЛИЗАЦИИ. ВЫПОЛНЕНИЕ ПРЕРВАНО. ---");
                 return;
             }
 
@@ -432,7 +466,7 @@ namespace Blocks_
             TraceTextBlock.Text = " ";
             if (syntaxTreeRoot == null)
             {
-                TraceTextBlock.Text = "Нет стартового блока";
+                AppendTraceMessage("Нет стартового блока");
                 return;
             }
 
@@ -444,7 +478,7 @@ namespace Blocks_
 
             if (executionOrder.Count == 0)
             {
-                TraceTextBlock.Text = "Нет стартового блока.";
+                AppendTraceMessage("Нет стартового блока.");
                 return;
             }
 
@@ -496,7 +530,7 @@ namespace Blocks_
             HighlightCurrentBlock(currentDebugNode.Block);
             ScrollToBlock(currentDebugNode.Block);
 
-            TraceTextBlock.Text += $"\n [{currentStepIndex + 1}] {currentDebugNode.Block.Name}";
+           AppendTraceMessage($"\n [{currentStepIndex + 1}] {currentDebugNode.Block.Name}");
             bool result = ExecuteBlock(currentDebugNode);
             Tree next = null;
 

@@ -34,13 +34,6 @@ namespace Blocks_.haru
             var codeBox = new TextBox { Text = block.Code, PlaceholderText = "Code", AcceptsReturn = true };
 
             var panel = new StackPanel();
-            var debugText = new TextBlock
-            {
-                Text = $"DEBUG:\nDocs is null: {block.Docs == null}\nDocs length: {block.Docs?.Length ?? -1}\nShot is null: {block.Shot == null}\nShot length: {block.Shot?.Length ?? -1}",
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Red)
-            };
-            panel.Children.Add(debugText);
             panel.Children.Add(docsBox);
             panel.Children.Add(shotBox);
             panel.Children.Add(codeBox);
