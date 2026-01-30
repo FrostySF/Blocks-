@@ -24,7 +24,7 @@ namespace Blocks_
 
         public MainWindow()
         {
-            
+
             InitializeComponent();
             InitializeBlocks();
 
@@ -64,6 +64,7 @@ namespace Blocks_
 
             InitializeVirtualGrid();
             EditWindow.Content = this.Content;
+            EditWindow.MainWindowInstance = this;
             ApplySettings();
             InitializeAutoSave();
         }
@@ -72,7 +73,7 @@ namespace Blocks_
         {
             if (BlockCountTextBlock == null || FileStatusTextBlock == null) return;
 
-            int blockCount = listofblocks?.Count ?? 0; 
+            int blockCount = listofblocks?.Count ?? 0;
             BlockCountTextBlock.Text = $"Блоков: {blockCount}";
 
             string fileName = currentFile != null ? currentFile.Name : "Нет открытого файла";
@@ -127,7 +128,7 @@ namespace Blocks_
                 {
                     var folder = ApplicationData.Current.LocalFolder;
                     var autosaveFile = await folder.CreateFileAsync("autosave.prg", CreationCollisionOption.ReplaceExisting);
-                    await SaveFlowchartData(autosaveFile); 
+                    await SaveFlowchartData(autosaveFile);
                     ShowNotification("Автосохранение выполнено в файл восстановления (autosave.prg)");
                 }
                 catch (Exception ex)
@@ -140,7 +141,7 @@ namespace Blocks_
         private void InitializeBlocks()
         {
             AddBlock("Начало", "\x25CB", "Начальный блок схемы", BlockType.Start, "", "");
-            AddBlock("Конец", "\x25CB", "Конечный блок схемы", BlockType.End, "", ""); 
+            AddBlock("Конец", "\x25CB", "Конечный блок схемы", BlockType.End, "", "");
             AddBlock("Присваивание", "\x25AD", "Блок для обработки данных", BlockType.Process,
                 "Присваивание\n<Элемент переменной> = <Арифметическое выражение>\n<Элемент таблицы> = <Арифметическое выражение>",
                 "Введите арифметическое выражение:");
@@ -549,7 +550,7 @@ namespace Blocks_
             }
         }
 
-       
+
         private void BuildSyntaxTree()
         {
             if (startBlock == null) return;

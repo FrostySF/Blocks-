@@ -27,7 +27,16 @@ namespace Blocks_
         /// <summary>
         /// Вычисляет расстояние между двумя точками
         /// </summary>
-        private double Distance(Point p1, Point p2) => Math.Sqrt(Math.Pow(p2.X - p1.X, 2) + Math.Pow(p2.Y - p1.Y, 2));
+        //private double Distance(Point p1, Point p2) => Math.Sqrt(Math.Pow(p2.X - p1.X, 2) + Math.Pow(p2.Y - p1.Y, 2));
+        /// <summary>
+        /// Расстояние между двумя точками
+        /// </summary>
+        private double Distance(Point p1, Point p2)
+        {
+            double dx = p2.X - p1.X;
+            double dy = p2.Y - p1.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
 
         /// <summary>
         /// Привязка координаты к виртуальной сетке
@@ -109,7 +118,7 @@ namespace Blocks_
         public Tree GetSyntaxTree() => syntaxTreeRoot;
         private async void About_Click(object sender, RoutedEventArgs e)
         {
-  
+
             string version = GetAppVersion();
 
             var dialog = new ContentDialog
@@ -210,7 +219,7 @@ namespace Blocks_
                 if (blockControl.Tag is BlockItem block)
                 {
                     _ = ShowEditDialogForBlock(block);
-                   
+
                 }
             };
 
@@ -227,7 +236,7 @@ namespace Blocks_
 
             blockControl.ContextFlyout = menu;
 
-           
+
         }
 
         private void ShowBlockInfo(BlockItem block)
@@ -278,7 +287,7 @@ namespace Blocks_
             currentDebugNode = null;
             currentStepIndex = -1;
             executionOrder.Clear();
-           
+
             ClearBlockHighlights();
 
             if (undoStack != null) undoStack.Clear();
@@ -344,7 +353,7 @@ namespace Blocks_
                 await XmlDataSerializer.SaveToFileAsync(dataToSave, file);
 
                 currentFile = file;
-                UpdateStatusBar(); 
+                UpdateStatusBar();
 
                 ShowNotification($"Блок-схема успешно сохранена в:\n{file.Name}");
             }
@@ -406,7 +415,7 @@ namespace Blocks_
                 Docs = docs,
                 Type = type
             };
-            
+
             System.Diagnostics.Debug.WriteLine($"Adding block: {name}, Docs={docs ?? "NULL"}, Shot={shot ?? "NULL"}");
 
             Blocks.Add(block);
@@ -458,7 +467,7 @@ namespace Blocks_
             BuildSyntaxTree();
             if (!InitializeVariables())
             {
-               AppendTraceMessage($"\n--- ОШИБКА ИНИЦИАЛИЗАЦИИ. ВЫПОЛНЕНИЕ ПРЕРВАНО. ---");
+                AppendTraceMessage($"\n--- ОШИБКА ИНИЦИАЛИЗАЦИИ. ВЫПОЛНЕНИЕ ПРЕРВАНО. ---");
                 return;
             }
 
@@ -530,7 +539,7 @@ namespace Blocks_
             HighlightCurrentBlock(currentDebugNode.Block);
             ScrollToBlock(currentDebugNode.Block);
 
-           AppendTraceMessage($"\n [{currentStepIndex + 1}] {currentDebugNode.Block.Name}");
+            AppendTraceMessage($"\n [{currentStepIndex + 1}] {currentDebugNode.Block.Name}");
             bool result = ExecuteBlock(currentDebugNode);
             Tree next = null;
 
@@ -587,7 +596,7 @@ namespace Blocks_
                     next = currentDebugNode.Children
                         .FirstOrDefault(c => c.BranchType == ConnectionType.Normal);
                     break;
-        }
+            }
             if (next != null)
                 executionOrder.Insert(currentStepIndex + 1, next);
             currentStepIndex++;
@@ -607,7 +616,7 @@ namespace Blocks_
         /// <summary>
         /// Обновляет визуальное представление блока после изменения
         /// </summary>
-        private void UpdateBlockVisual(BlockItem block)
+        public void UpdateBlockVisual(BlockItem block)
         {
             var border = BlocksCanvas.Children.OfType<Border>()
                 .FirstOrDefault(b => b.Tag == block);

@@ -8,6 +8,7 @@ namespace Blocks_.haru
     public static class EditWindow
     {
         public static UIElement Content { get; set; }
+        public static MainWindow MainWindowInstance { get; set; }
 
         public static async void Show(BlockItem block)
         {
@@ -66,6 +67,7 @@ namespace Blocks_.haru
             if (result == ContentDialogResult.Primary || isPrimaryResultSimulated)
             {
                 block.Code = codeBox.Text;
+                MainWindowInstance?.UpdateBlockVisual(block);
             }
         }
 
@@ -244,6 +246,7 @@ namespace Blocks_.haru
                 }
 
                 block.Name = $"Массив: {arrayName}";
+                MainWindowInstance?.UpdateBlockVisual(block);
             }
         }
 
