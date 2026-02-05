@@ -1,4 +1,4 @@
-﻿using Blocks_.Core.Models;
+using Blocks_.Core.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,6 +13,9 @@ namespace Blocks_
 {
     public sealed partial class MainWindow : Window
     {
+        // Длина перпендикулярного сегмента при выходе/входе
+        private const double PERPENDICULAR_SEGMENT_LENGTH = 20.0;
+
         private List<Point> RoutePath(Point start, Point end, ConnectionType connectionType = ConnectionType.Normal, BlockItem fromBlock = null)
         {
             bool isLoopBack = connectionType == ConnectionType.LoopBody && start.Y >= end.Y - SettingsWindow.AppSettings.GridStep;
@@ -43,8 +46,9 @@ namespace Blocks_
                 }
             }
 
-            return RoutePathInternal(start, end);
+            return RoutePathInternal(start, end, connectionType, fromBlock);
         }
+
         private List<Point> RouteSideExitPath(Point start, Point end, bool goingRight)
         {
             var points = new List<Point> { start };
@@ -89,7 +93,7 @@ namespace Blocks_
             return points;
         }
 
-        private List<Point> RoutePathInternal(Point start, Point end)
+        private List<Point> RoutePathInternal(Point start, Point end, ConnectionType connectionType = ConnectionType.Normal, BlockItem fromBlock = null)
         {
             var points = new List<Point> { start };
 
@@ -98,48 +102,205 @@ namespace Blocks_
             double absDeltaX = Math.Abs(deltaX);
             double absDeltaY = Math.Abs(deltaY);
 
+            // Определяем направление выхода из блока
+            bool exitFromSide = IsExitFromSide(start, end, fromBlock, connectionType);
+            bool exitFromTopBottom = IsExitFromTopBottom(start, end, fromBlock, connectionType);
 
+            // Добавляем перпендикулярный сегмент при выходе
+            if (exitFromSide)
+            {
+                // Выход сбоку - добавляем горизонтальный сегмент
+                double horizontalOffset = Math.Sign(deltaX) * PERPENDICULAR_SEGMENT_LENGTH;
+                Point firstSegmentEnd = new Point(start.X + horizontalOffset, start.Y);
+                points.Add(firstSegmentEnd);
+                start = firstSegmentEnd; // Обновляем стартовую точку для дальнейшего маршрутирования
+            }
+            else if (exitFromTopBottom)
+            {
+                // Выход сверху/снизу - добавляем вертикальный сегмент
+                double verticalOffset = Math.Sign(deltaY) * PERPENDICULAR_SEGMENT_LENGTH;
+                Point firstSegmentEnd = new Point(start.X, start.Y + verticalOffset);
+                points.Add(firstSegmentEnd);
+                start = firstSegmentEnd; // Обновляем стартовую точку для дальнейшего маршрутирования
+            }
+
+            // Обновляем дельты после добавления перпендикулярного сегмента
+            deltaX = end.X - start.X;
+            deltaY = end.Y - start.Y;
+            absDeltaX = Math.Abs(deltaX);
+            absDeltaY = Math.Abs(deltaY);
+
+            // Определяем направление входа в блок
+            bool enterToSide = IsEnterToSide(end, fromBlock, connectionType);
+            bool enterToTopBottom = IsEnterToTopBottom(end, fromBlock, connectionType);
+
+            // Создаем промежуточную конечную точку для перпендикулярного входа
+            Point adjustedEnd = end;
+            if (enterToSide)
+            {
+                // Вход сбоку - отступаем по горизонтали
+                double horizontalOffset = -Math.Sign(deltaX) * PERPENDICULAR_SEGMENT_LENGTH;
+                adjustedEnd = new Point(end.X + horizontalOffset, end.Y);
+            }
+            else if (enterToTopBottom)
+            {
+                // Вход сверху/снизу - отступаем по вертикали
+                double verticalOffset = -Math.Sign(deltaY) * PERPENDICULAR_SEGMENT_LENGTH;
+                adjustedEnd = new Point(end.X, end.Y + verticalOffset);
+            }
+
+            // Теперь выполняем стандартную логику маршрутизации между start и adjustedEnd
             if (absDeltaX < 1 && absDeltaY > SettingsWindow.AppSettings.GridStep)
             {
-                points.Add(end);
-                return points;
+                points.Add(adjustedEnd);
             }
-            if (absDeltaY < 1 && absDeltaX > SettingsWindow.AppSettings.GridStep)
+            else if (absDeltaY < 1 && absDeltaX > SettingsWindow.AppSettings.GridStep)
             {
-                points.Add(end);
-                return points;
+                points.Add(adjustedEnd);
             }
-
-            if (Distance(start, end) < SettingsWindow.AppSettings.MinSegmentLength * 1.5)
+            else if (Distance(start, adjustedEnd) < SettingsWindow.AppSettings.MinSegmentLength * 1.5)
             {
-                points.Add(new Point(start.X, end.Y));
-                points.Add(end);
-                return points;
+                points.Add(new Point(start.X, adjustedEnd.Y));
+                points.Add(adjustedEnd);
             }
-
-            if (absDeltaX < SettingsWindow.AppSettings.GridStep / 2)
+            else if (absDeltaX < SettingsWindow.AppSettings.GridStep / 2)
             {
                 if (absDeltaY < SettingsWindow.AppSettings.GridStep / 2)
                 {
-                    points.Add(end);
+                    points.Add(adjustedEnd);
                 }
                 else
                 {
-                    points.Add(new Point(start.X, end.Y));
-                    if (Math.Abs(end.X - start.X) > 0.1) points.Add(end);
+                    points.Add(new Point(start.X, adjustedEnd.Y));
+                    if (Math.Abs(adjustedEnd.X - start.X) > 0.1) points.Add(adjustedEnd);
                 }
-                return points;
             }
-
-            if (absDeltaY < SettingsWindow.AppSettings.GridStep / 2)
+            else if (absDeltaY < SettingsWindow.AppSettings.GridStep / 2)
             {
-                points.Add(new Point(end.X, start.Y));
-                if (Math.Abs(end.Y - start.Y) > 0.1) points.Add(end);
-                return points;
+                points.Add(new Point(adjustedEnd.X, start.Y));
+                if (Math.Abs(adjustedEnd.Y - start.Y) > 0.1) points.Add(adjustedEnd);
+            }
+            else
+            {
+                bool useHorizontalFirst = ShouldUseHorizontalFirst(start, adjustedEnd, deltaX, deltaY);
+                var routePoints = TryMultipleRoutingStrategies(start, adjustedEnd, deltaX, deltaY, useHorizontalFirst);
+
+                // Добавляем точки маршрута, пропуская первую точку (она уже есть как start)
+                for (int i = 1; i < routePoints.Count; i++)
+                {
+                    points.Add(routePoints[i]);
+                }
             }
 
-            bool useHorizontalFirst = ShouldUseHorizontalFirst(start, end, deltaX, deltaY);
-            return TryMultipleRoutingStrategies(start, end, deltaX, deltaY, useHorizontalFirst);
+            // Добавляем финальный перпендикулярный сегмент для входа
+            if (enterToSide || enterToTopBottom)
+            {
+                points.Add(end);
+            }
+
+            return points;
+        }
+
+        private bool IsExitFromSide(Point start, Point end, BlockItem fromBlock, ConnectionType connectionType)
+        {
+            if (fromBlock == null) return false;
+
+            // Определяем, выходит ли линия сбоку от блока
+            var exitDirection = GetExitDirection(fromBlock, connectionType);
+
+            // Для боковых выходов (лево/право) возвращаем true
+            return exitDirection == ExitDirection.Left || exitDirection == ExitDirection.Right;
+        }
+
+        private bool IsExitFromTopBottom(Point start, Point end, BlockItem fromBlock, ConnectionType connectionType)
+        {
+            if (fromBlock == null) return false;
+
+            // Определяем, выходит ли линия сверху/снизу от блока
+            var exitDirection = GetExitDirection(fromBlock, connectionType);
+
+            // Для вертикальных выходов (верх/низ) возвращаем true
+            return exitDirection == ExitDirection.Top || exitDirection == ExitDirection.Bottom;
+        }
+
+        private bool IsEnterToSide(Point endPoint, BlockItem toBlock, ConnectionType connectionType)
+        {
+            if (toBlock == null) return false;
+
+            // Определяем направление входа для целевого блока
+            // Для простоты считаем, что если блок имеет боковые входы, то это боковой вход
+            // В реальном приложении нужно учитывать тип блока и тип соединения
+            return toBlock.Type == BlockType.While ||
+                   toBlock.Type == BlockType.DoWhile ||
+                   toBlock.Type == BlockType.For ||
+                   toBlock.Type == BlockType.Decision ||
+                   toBlock.Type == BlockType.LoopConnector ||
+                   toBlock.Type == BlockType.DoLoopConnector;
+        }
+
+        private bool IsEnterToTopBottom(Point endPoint, BlockItem toBlock, ConnectionType connectionType)
+        {
+            if (toBlock == null) return true; // По умолчанию считаем вход сверху/снизу
+
+            // Блоки, которые обычно имеют вход сверху
+            return toBlock.Type == BlockType.Start ||
+                   toBlock.Type == BlockType.Process ||
+                   toBlock.Type == BlockType.Input ||
+                   toBlock.Type == BlockType.Output ||
+                   toBlock.Type == BlockType.InputOutput ||
+                   toBlock.Type == BlockType.VariableDeclaration ||
+                   toBlock.Type == BlockType.ArrayDeclaration;
+        }
+
+        private enum ExitDirection
+        {
+            Top,
+            Bottom,
+            Left,
+            Right
+        }
+
+        private ExitDirection GetExitDirection(BlockItem block, ConnectionType connectionType)
+        {
+            if (block == null) return ExitDirection.Bottom;
+
+            return block.Type switch
+            {
+                BlockType.While => connectionType switch
+                {
+                    ConnectionType.LoopBody => ExitDirection.Left,
+                    ConnectionType.TrueBranch => ExitDirection.Bottom,
+                    ConnectionType.FalseBranch => ExitDirection.Right,
+                    _ => ExitDirection.Bottom
+                },
+                BlockType.DoWhile => connectionType switch
+                {
+                    ConnectionType.TrueBranch => ExitDirection.Right,
+                    ConnectionType.FalseBranch => ExitDirection.Bottom,
+                    ConnectionType.LoopBody => ExitDirection.Left,
+                    _ => ExitDirection.Bottom
+                },
+                BlockType.For => connectionType switch
+                {
+                    ConnectionType.TrueBranch => ExitDirection.Bottom,
+                    ConnectionType.FalseBranch => ExitDirection.Right,
+                    _ => ExitDirection.Bottom
+                },
+                BlockType.LoopConnector => ExitDirection.Left,
+                BlockType.DoLoopConnector => connectionType switch
+                {
+                    ConnectionType.Normal => ExitDirection.Bottom,
+                    ConnectionType.LoopBody => ExitDirection.Left,
+                    _ => ExitDirection.Bottom
+                },
+                BlockType.Decision => connectionType switch
+                {
+                    ConnectionType.TrueBranch => ExitDirection.Right,
+                    ConnectionType.FalseBranch => ExitDirection.Left,
+                    _ => ExitDirection.Right
+                },
+                _ => ExitDirection.Bottom // По умолчанию выход снизу
+            };
         }
 
 
@@ -364,6 +525,135 @@ namespace Blocks_
             return !(r1.Right < r2.Left || r1.Left > r2.Right || r1.Bottom < r2.Top || r1.Top > r2.Bottom);
         }
 
+        private bool CheckPathBlockIntersectionn(List<Point> pathPoints, BlockItem fromBlock, BlockItem toBlock)
+        {
+            if (pathPoints == null || pathPoints.Count < 2)
+                return false;
+
+            double clearance = OBSTACLE_CLEARANCE;
+
+            for (int i = 0; i < pathPoints.Count - 1; i++)
+            {
+                Point start = pathPoints[i];
+                Point end = pathPoints[i + 1];
+
+                var segmentRect = new Rect(
+                    Math.Min(start.X, end.X) - clearance,
+                    Math.Min(start.Y, end.Y) - clearance,
+                    Math.Abs(end.X - start.X) + clearance * 2,
+                    Math.Abs(end.Y - start.Y) + clearance * 2
+                );
+
+                foreach (var child in BlocksCanvas.Children)
+                {
+                    if (child is Border border && border.Tag is BlockItem block)
+                    {
+                        // Пропускаем блоки, которые соединены этой линией
+                        if (block == fromBlock || block == toBlock)
+                            continue;
+
+                        var blockRect = new Rect(
+                            Canvas.GetLeft(border) - clearance / 2,
+                            Canvas.GetTop(border) - clearance / 2,
+                            border.Width + clearance,
+                            border.Height + clearance
+                        );
+
+                        if (DoRectsIntersect(segmentRect, blockRect))
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool CheckPathLineOverlapp(List<Point> pathPoints, ConnectionLine currentLine)
+        {
+            if (pathPoints == null || pathPoints.Count < 2)
+                return false;
+
+            double clearance = OBSTACLE_CLEARANCE * 0.8;
+
+            for (int i = 0; i < pathPoints.Count - 1; i++)
+            {
+                Point p1 = pathPoints[i];
+                Point p2 = pathPoints[i + 1];
+
+                var currentSegmentRect = new Rect(
+                    Math.Min(p1.X, p2.X) - clearance,
+                    Math.Min(p1.Y, p2.Y) - clearance,
+                    Math.Abs(p2.X - p1.X) + clearance * 2,
+                    Math.Abs(p2.Y - p1.Y) + clearance * 2
+                );
+
+                foreach (var otherLine in connectionLines)
+                {
+                    // Пропускаем ту же самую линию
+                    if (otherLine == currentLine)
+                        continue;
+
+                    if (otherLine.Points == null || otherLine.Points.Count < 2)
+                        continue;
+
+                    for (int j = 0; j < otherLine.Points.Count - 1; j++)
+                    {
+                        Point op1 = otherLine.Points[j];
+                        Point op2 = otherLine.Points[j + 1];
+
+                        var otherSegmentRect = new Rect(
+                            Math.Min(op1.X, op2.X) - clearance,
+                            Math.Min(op1.Y, op2.Y) - clearance,
+                            Math.Abs(op2.X - op1.X) + clearance * 2,
+                            Math.Abs(op2.Y - op1.Y) + clearance * 2
+                        );
+
+                        if (DoRectsIntersect(currentSegmentRect, otherSegmentRect))
+                        {
+                            // Проверяем, действительно ли сегменты пересекаются
+                            if (DoLineSegmentsIntersect(p1, p2, op1, op2))
+                                return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool DoLineSegmentsIntersect(Point p1, Point p2, Point q1, Point q2)
+        {
+            double orientation1 = Orientationn(p1, p2, q1);
+            double orientation2 = Orientationn(p1, p2, q2);
+            double orientation3 = Orientationn(q1, q2, p1);
+            double orientation4 = Orientationn(q1, q2, p2);
+
+            // Общий случай пересечения
+            if (orientation1 != orientation2 && orientation3 != orientation4)
+                return true;
+
+            // Особые случаи - коллинеарные точки
+            if (orientation1 == 0 && OnSegment(p1, q1, p2)) return true;
+            if (orientation2 == 0 && OnSegment(p1, q2, p2)) return true;
+            if (orientation3 == 0 && OnSegment(q1, p1, q2)) return true;
+            if (orientation4 == 0 && OnSegment(q1, p2, q2)) return true;
+
+            return false;
+        }
+
+        private double Orientationn(Point p, Point q, Point r)
+        {
+            double val = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y);
+            if (Math.Abs(val) < 0.001) return 0; // Коллинеарны
+            return (val > 0) ? 1 : 2; // По часовой или против часовой
+        }
+
+        private bool OnSegment(Point p, Point q, Point r)
+        {
+            return q.X <= Math.Max(p.X, r.X) && q.X >= Math.Min(p.X, r.X) &&
+                   q.Y <= Math.Max(p.Y, r.Y) && q.Y >= Math.Min(p.Y, r.Y);
+        }
+
         private void UpdateConnectionLines(BlockItem movedBlock)
         {
             var relatedLines = connectionLines
@@ -387,7 +677,7 @@ namespace Blocks_
                 }
 
                 Point end = GetAnchorPosition(connection.ToBlock, targetAnchorType, isOutput: false);
-                var newPoints = RoutePath(start, end, routingType);
+                var newPoints = RoutePath(start, end, routingType, connection.FromBlock);
 
                 if (connection.VisualPath == null)
                 {
@@ -400,7 +690,6 @@ namespace Blocks_
                 connection.VisualPath.Points = pc;
                 connection.Points = newPoints;
 
- 
                 var baseColor = connection.Type switch
                 {
                     ConnectionType.TrueBranch => Colors.LimeGreen,
@@ -409,13 +698,12 @@ namespace Blocks_
                     _ => Colors.White
                 };
 
-                bool intersectsBlock = CheckPathBlockIntersection(newPoints, connection.FromBlock, connection.ToBlock);
-                bool overlapsLine = CheckPathLineOverlap(newPoints, connection);
+                bool intersectsBlock = CheckPathBlockIntersectionn(newPoints, connection.FromBlock, connection.ToBlock);
+                bool overlapsLine = CheckPathLineOverlapp(newPoints, connection);
 
                 connection.VisualPath.Stroke = (intersectsBlock || overlapsLine)
                     ? ErrorLineColor
                     : new SolidColorBrush(baseColor);
-
 
                 if (connection.VisualLabel != null)
                 {
@@ -444,7 +732,7 @@ namespace Blocks_
 
                         double offsetX = (connection.Type == ConnectionType.TrueBranch)
                             ? TEXT_PADDING
-                            : -(25.0 + TEXT_PADDING); 
+                            : -(25.0 + TEXT_PADDING);
 
                         if (connection.Type == ConnectionType.FalseBranch && connection.FromBlock.Type == BlockType.While)
                         {
@@ -454,7 +742,7 @@ namespace Blocks_
                         Canvas.SetLeft(label, anchorPoint.X + offsetX);
                         Canvas.SetTop(label, anchorPoint.Y - TEXT_HEIGHT_OFFSET);
 
-                       // BlocksCanvas.Children.Add(label);
+                        // BlocksCanvas.Children.Add(label);
                         connection.VisualLabel = label;
                     }
                 }
@@ -483,19 +771,18 @@ namespace Blocks_
 
             ConnectionType endType = ConnectionType.Input;
             ConnectionType routingType = type;
-            if (from.Type == BlockType.LoopConnector  && to.Type == BlockType.While && type == ConnectionType.Normal)
+            if (from.Type == BlockType.LoopConnector && to.Type == BlockType.While && type == ConnectionType.Normal)
             {
                 endType = ConnectionType.LoopBody;
                 routingType = ConnectionType.LoopBody;
             }
-
             else if (to.Type == BlockType.DoLoopConnector && (from.Type == BlockType.While || from.Type == BlockType.DoWhile) && type == ConnectionType.LoopBody)
             {
                 endType = ConnectionType.LoopBody;
                 routingType = ConnectionType.LoopBody;
             }
             Point endAnchor = GetAnchorPosition(to, endType, isOutput: false);
-            var points = RoutePath(startAnchor, endAnchor, routingType);
+            var points = RoutePath(startAnchor, endAnchor, routingType, from);
 
             var baseColor = type switch
             {
@@ -525,13 +812,24 @@ namespace Blocks_
                 Stroke = brush
             };
 
+            // Проверяем пересечения сразу при создании
+            bool intersectsBlock = CheckPathBlockIntersectionn(points, from, to);
+            bool overlapsLine = CheckPathLineOverlapp(points, connection);
+
+            if (intersectsBlock || overlapsLine)
+            {
+                polyline.Stroke = ErrorLineColor;
+                arrow.Fill = ErrorLineColor;
+                connection.Stroke = ErrorLineColor;
+            }
+
             if (type == ConnectionType.TrueBranch || type == ConnectionType.FalseBranch)
             {
                 string txt = type == ConnectionType.TrueBranch ? "Да" : "Нет";
                 var label = new TextBlock
                 {
                     Text = txt,
-                    Foreground = brush,
+                    Foreground = polyline.Stroke,
                     FontSize = 14,
                     FontWeight = Microsoft.UI.Text.FontWeights.Bold,
                     IsHitTestVisible = false
@@ -548,7 +846,7 @@ namespace Blocks_
                     Canvas.SetLeft(label, p0.X + offX);
                     Canvas.SetTop(label, p0.Y - 18.0);
 
-                    //BlocksCanvas.Children.Add(label);
+                    // BlocksCanvas.Children.Add(label);
                     connection.VisualLabel = label;
                 }
             }
@@ -573,6 +871,7 @@ namespace Blocks_
             Canvas.SetTop(arrow, end.Y);
             return arrow;
         }
+
         private Point GetAnchorPosition(BlockItem block, ConnectionType type, bool isOutput)
         {
             double left = SnapToGrid(block.CanvasLeft);
@@ -589,58 +888,59 @@ namespace Blocks_
                         return new Point(left, top + height * 0.5); // Левый якорь
                     }
                 }
-                return new Point(left + width * 0.5, top);
+                return new Point(left + width * 0.5, top); // Вход сверху по умолчанию
             }
 
             return block.Type switch
             {
                 BlockType.While => type switch
                 {
-                    ConnectionType.LoopBody => new Point(left, top + height * 0.5),
-                    ConnectionType.TrueBranch => new Point(left + width * 0.5, top + height),
-                    ConnectionType.FalseBranch => new Point(left + width, top + height * 0.5),
-                    _ => new Point(left + width * 0.5, top + height)
+                    ConnectionType.LoopBody => new Point(left, top + height * 0.5), // Выход слева
+                    ConnectionType.TrueBranch => new Point(left + width * 0.5, top + height), // Выход снизу
+                    ConnectionType.FalseBranch => new Point(left + width, top + height * 0.5), // Выход справа
+                    _ => new Point(left + width * 0.5, top + height) // По умолчанию снизу
                 },
                 BlockType.DoWhile => type switch
                 {
-                    ConnectionType.TrueBranch => new Point(left + width, top + height * 0.5),
-                    ConnectionType.FalseBranch => new Point(left + width * 0.5, top + height),
-                    ConnectionType.LoopBody => new Point(left, top + height * 0.5),
-                    _ => new Point(left + width * 0.5, top + height)
+                    ConnectionType.TrueBranch => new Point(left + width, top + height * 0.5), // Выход справа
+                    ConnectionType.FalseBranch => new Point(left + width * 0.5, top + height), // Выход снизу
+                    ConnectionType.LoopBody => new Point(left, top + height * 0.5), // Выход слева
+                    _ => new Point(left + width * 0.5, top + height) // По умолчанию снизу
                 },
                 BlockType.For => type switch
                 {
-                    ConnectionType.TrueBranch => new Point(left + width * 0.5, top + height),
-                    ConnectionType.FalseBranch => new Point(left + width * 1.0, top + height * 0.5),
-                    _ => new Point(left + width * 0.5, top + height)
+                    ConnectionType.TrueBranch => new Point(left + width * 0.5, top + height), // Выход снизу
+                    ConnectionType.FalseBranch => new Point(left + width * 1.0, top + height * 0.5), // Выход справа
+                    _ => new Point(left + width * 0.5, top + height) // По умолчанию снизу
                 },
-                BlockType.LoopConnector => new Point(left, top + height * 0.5),
+                BlockType.LoopConnector => new Point(left, top + height * 0.5), // Выход слева
 
                 BlockType.DoLoopConnector => type switch
                 {
-                    ConnectionType.Normal => new Point(left + width * 0.5, top + height),
-                    ConnectionType.LoopBody => new Point(left, top + height * 0.5),
-                    _ => new Point(left + width * 0.5, top + height)
+                    ConnectionType.Normal => new Point(left + width * 0.5, top + height), // Выход снизу
+                    ConnectionType.LoopBody => new Point(left, top + height * 0.5), // Выход слева
+                    _ => new Point(left + width * 0.5, top + height) // По умолчанию снизу
                 },
 
                 BlockType.Decision => type switch
                 {
-                    ConnectionType.TrueBranch => new Point(left + width, top + height * 0.5),
-                    ConnectionType.FalseBranch => new Point(left, top + height * 0.5),
-                    _ => new Point(left + width, top + height * 0.5)
+                    ConnectionType.TrueBranch => new Point(left + width, top + height * 0.5), // Выход справа
+                    ConnectionType.FalseBranch => new Point(left, top + height * 0.5), // Выход слева
+                    _ => new Point(left + width, top + height * 0.5) // По умолчанию справа
                 },
 
-                BlockType.Start => new Point(left + width * 0.5, top + height),
-                BlockType.Process => new Point(left + width * 0.5, top + height),
-                BlockType.Input => new Point(left + width * 0.5, top + height),
-                BlockType.Output => new Point(left + width * 0.5, top + height),
-                BlockType.InputOutput => new Point(left + width * 0.5, top + height),
-                BlockType.VariableDeclaration => new Point(left + width * 0.5, top + height),
-                BlockType.ArrayDeclaration => new Point(left + width * 0.5, top + height),
+                BlockType.Start => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.Process => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.Input => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.Output => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.InputOutput => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.VariableDeclaration => new Point(left + width * 0.5, top + height), // Выход снизу
+                BlockType.ArrayDeclaration => new Point(left + width * 0.5, top + height), // Выход снизу
 
-                _ => new Point(left + width * 0.5, top + height)
+                _ => new Point(left + width * 0.5, top + height) // По умолчанию выход снизу
             };
         }
+
         private Ellipse FindNearestAvailableAnchor(Point position, double threshold)
         {
             foreach (var blockItem in listofblocks)
@@ -733,8 +1033,8 @@ namespace Blocks_
                 Point end = GetAnchorPosition(connection.ToBlock, targetType, isOutput: false);
                 var pathPoints = RoutePath(start, end);
 
-                if (CheckPathBlockIntersection(pathPoints, connection.FromBlock, connection.ToBlock) ||
-                    CheckPathLineOverlap(pathPoints, connection))
+                if (CheckPathBlockIntersectionn(pathPoints, connection.FromBlock, connection.ToBlock) ||
+                    CheckPathLineOverlapp(pathPoints, connection))
                 {
                     collisionDetected = true;
                     break;
